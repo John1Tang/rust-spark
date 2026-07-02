@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rspark-examples
+  namespace: rspark
+  labels:
+    app: rspark
+data:
+  employees.csv: |
+    id,name,dept,salary,hire_date,city
+    1,Alice,Engineering,95000,2019-03-12,Seattle
+    2,Bob,Engineering,87000,2020-07-08,Seattle
+    3,Charlie,Sales,72000,2018-11-20,New York
+    4,Dave,Sales,81000,2021-01-15,New York
+    5,Eve,Engineering,102000,2017-05-30,Seattle
+    6,Frank,Marketing,65000,2022-09-01,Los Angeles
+    7,Grace,Engineering,89000,2019-12-12,Seattle
+    8,Heidi,Sales,78000,2020-04-22,Chicago
+    9,Ivan,Engineering,99000,2018-08-19,Austin
+    10,Judy,Marketing,71000,2021-06-30,Los Angeles
+    11,Kevin,Engineering,76000,2022-02-14,Seattle
+    12,Liam,Sales,83000,2019-10-05,New York
+    13,Mia,Marketing,68000,2020-12-18,Chicago
+    14,Noah,Engineering,91000,2018-02-09,Seattle
+    15,Olivia,Sales,75000,2021-08-21,Chicago
+    16,Peter,Engineering,105000,2017-11-11,Seattle
+    17,Quinn,Marketing,73000,2020-03-03,Los Angeles
+    18,Riley,Sales,88000,2019-05-17,New York
+    19,Sophia,Engineering,84000,2021-04-04,Seattle
+    20,Tom,Sales,79000,2022-07-15,Chicago
+  sales.csv: |
+    id,product,amount,region,sold_at
+    1,Widget,250.50,West,2026-01-15
+    2,Gadget,499.99,East,2026-01-18
+    3,Widget,150.00,West,2026-02-02
+    5,Gizmo,899.00,East,2026-02-10
+    7,Widget,75.25,South,2026-02-14
+    8,Widget,320.00,West,2026-03-01
+    9,Gadget,599.50,East,2026-03-04
+    11,Gizmo,1099.99,West,2026-03-12
+    12,Widget,89.99,South,2026-03-15
+    14,Gizmo,750.00,West,2026-03-22
+    15,Widget,410.00,East,2026-04-01
+    16,Widget,215.50,South,2026-04-08
+    17,Gadget,649.99,East,2026-04-15
+    18,Gizmo,999.00,West,2026-04-20
+    19,Widget,180.00,West,2026-05-05
+    20,Widget,295.00,South,2026-05-12
+    2,Gadget,549.99,East,2026-05-18
+    3,Gizmo,1249.00,West,2026-05-25
+    5,Widget,142.50,South,2026-06-02
+    8,Widget,365.00,East,2026-06-09
+  events.json: |
+    {"id": 1, "event": "click", "user_id": 101, "page": "/home", "duration_ms": 1250}
+    {"id": 2, "event": "view", "user_id": 102, "page": "/products", "duration_ms": 3400}
+    {"id": 3, "event": "click", "user_id": 101, "page": "/products/widget", "duration_ms": 800}
+    {"id": 4, "event": "purchase", "user_id": 103, "page": "/checkout", "duration_ms": 12200}
+    {"id": 5, "event": "view", "user_id": 104, "page": "/about", "duration_ms": 2100}
+    {"id": 6, "event": "click", "user_id": 102, "page": "/products/gadget", "duration_ms": 950}
+    {"id": 7, "event": "click", "user_id": 105, "page": "/home", "duration_ms": 1700}
+    {"id": 8, "event": "purchase", "user_id": 101, "page": "/checkout", "duration_ms": 9800}
+    {"id": 9, "event": "view", "user_id": 103, "page": "/products/gizmo", "duration_ms": 4500}
+    {"id": 10, "event": "click", "user_id": 104, "page": "/contact", "duration_ms": 600}

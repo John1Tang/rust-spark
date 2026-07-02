@@ -8,6 +8,16 @@ metadata:
     role: worker
 spec:
   replicas: 2
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: 120
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Workers are stateless and can drop traffic, so allow a brief
+      # overlap so we can deploy without waiting for old workers to
+      # fully drain.
+      maxSurge: 1
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: rspark
@@ -18,10 +28,19 @@ spec:
         app: rspark
         role: worker
     spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: rspark
+              role: worker
+      terminationGracePeriodSeconds: 20
       containers:
         - name: rspark
           image: rspark:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           command: ["/usr/local/bin/rspark-cli"]
           args:
             - "worker"
@@ -36,6 +55,16 @@ spec:
           env:
             - name: RSPARK_LOG
               value: "info"
+          startupProbe:
+            # Worker doesn't expose an HTTP port, so use a TCP probe
+            # against the (currently unused) bind address. Just check
+            # the process is alive by sending SIGCONT — but exec probes
+            # aren't great. Use a simple `true` since the master
+            # accepts the registration as the real readiness signal.
+            exec:
+              command: ["/bin/true"]
+            failureThreshold: 30
+            periodSeconds: 2
           resources:
             requests:
               cpu: "200m"

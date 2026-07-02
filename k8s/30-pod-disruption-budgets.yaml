@@ -1,0 +1,27 @@
+# PodDisruptionBudgets prevent voluntary disruptions (node drains,
+# autoscaler scale-down) from killing all replicas at once. With
+# maxUnavailable: 1 the scheduler / eviction controller must leave at
+# least one master pod running.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rspark-master
+  namespace: rspark
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: rspark
+      role: master
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rspark-worker
+  namespace: rspark
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: rspark
+      role: worker

@@ -7,6 +7,10 @@ metadata:
     app: rspark
     role: master
 spec:
+  # ClusterIP because the dashboard is exposed to the user via
+  # `kubectl port-forward` (see scripts/deploy.sh). k3d's loadbalancer
+  # could front this with a NodePort, but on macOS the host port mapping
+  # is fragile enough that port-forward is the lower-surprise default.
   type: ClusterIP
   selector:
     app: rspark

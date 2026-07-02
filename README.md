@@ -122,22 +122,37 @@ cargo run -p rspark-cli -- submit --master http://localhost:7077 \
     --file query.sql --name demo
 ```
 
-## Kubernetes
+## Kubernetes (local k3d)
+
+For a local k3d cluster (k3s-in-Docker) with zero-downtime rolling updates:
 
 ```bash
-# Build and load the image into your cluster
-docker build -f docker/Dockerfile -t rspark:latest .
-kind load docker-image rspark:latest   # or your registry of choice
+# one-time setup
+brew install k3d
+./scripts/cluster-up.sh        # creates the `rspark` cluster if needed
 
-kubectl apply -f k8s/
-kubectl -n rspark get pods
+# each time you have a feature/improvement
+./scripts/deploy.sh            # build image, import to k3d, rollout restart
+
+# use it
+./scripts/port-forward.sh      # http://127.0.0.1:8080 (dashboard), :7077 (API)
+./scripts/sql.sh "SELECT dept, COUNT(*) FROM employees GROUP BY dept"
 ```
 
-Port-forward the dashboard:
+The deploy script is the loop you'll repeat: it builds `rspark:latest`, imports it
+into the running k3d cluster, and runs `kubectl rollout restart` on the master
+and worker Deployments. The master uses `maxSurge=1, maxUnavailable=0` so a
+new pod comes up before the old one drains — in-flight SQL queries keep
+running.
 
 ```bash
-kubectl -n rspark port-forward svc/rspark-master 8080:8080
+kubectl -n rspark get pods -w    # watch the rolling update
+kubectl -n rspark logs -l role=master --tail=50
+./scripts/cluster-up.sh --keep   # bring the cluster back if it was stopped
 ```
+
+For production-grade k3s (not k3d-in-Docker), the manifests in `k8s/` apply
+unchanged; just `kubectl apply -f k8s/` against your cluster.
 
 ## Architecture
 

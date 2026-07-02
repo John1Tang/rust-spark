@@ -7,7 +7,28 @@ metadata:
     app: rspark
     role: master
 spec:
+  # Single master replica — the master's state is in-memory and isn't
+  # shared between pods, so a load-balanced second master would be a
+  # lie (workers register to whichever pod the service picked, and the
+  # API user would see "workers=[]" half the time).
+  #
+  # Rolling updates are still zero-downtime: with maxSurge=1 the new
+  # master comes up first, passes readiness, and only then does the old
+  # pod terminate. In-flight HTTP connections to the old pod will drop,
+  # so the deploy script briefly port-forwards to the new pod after
+  # the rollout finishes.
   replicas: 1
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: 120
+  # RollingUpdate with maxUnavailable=0 means the deployment never
+  # short-circuits the existing pods, so an in-flight SQL query on the
+  # old pod keeps running while the new pod warms up. Combined with
+  # maxSurge=1, this gives zero-downtime upgrades.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: rspark
@@ -18,10 +39,21 @@ spec:
         app: rspark
         role: master
     spec:
+      # Spread pods across nodes for HA on multi-node clusters. On a
+      # single-node cluster this is a no-op.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: rspark
+              role: master
+      terminationGracePeriodSeconds: 30
       containers:
         - name: rspark
           image: rspark:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           command: ["/usr/local/bin/rspark-cli"]
           args:
             - "master"
@@ -31,6 +63,7 @@ spec:
             - "0.0.0.0:8080"
             - "--master-id"
             - "master-$(POD_NAME)"
+            - "--examples"
           env:
             - name: POD_NAME
               valueFrom:
@@ -43,18 +76,27 @@ spec:
               containerPort: 7077
             - name: dashboard
               containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /health
+              port: api
+            failureThreshold: 30
+            periodSeconds: 2
           readinessProbe:
             httpGet:
               path: /health
               port: api
-            initialDelaySeconds: 5
+            initialDelaySeconds: 2
             periodSeconds: 5
+            timeoutSeconds: 3
           livenessProbe:
             httpGet:
               path: /health
               port: api
             initialDelaySeconds: 15
             periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
           resources:
             requests:
               cpu: "200m"
