@@ -28,9 +28,9 @@ impl DataSource for JsonSource {
     fn infer_schema(&self, path: &str) -> Result<Schema> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
-        let mut stream = serde_json::Deserializer::from_reader(reader).into_iter::<serde_json::Value>();
+        let stream = serde_json::Deserializer::from_reader(reader).into_iter::<serde_json::Value>();
         let mut fields: Vec<Field> = Vec::new();
-        while let Some(value) = stream.next() {
+        for value in stream {
             let value = value?;
             if let serde_json::Value::Object(map) = value {
                 for (k, v) in map {
@@ -59,14 +59,15 @@ impl DataSource for JsonSource {
             match value {
                 serde_json::Value::Object(map) => {
                     for field in effective_schema.fields() {
-                        let v = map.get(&field.name).cloned().unwrap_or(serde_json::Value::Null);
+                        let v = map
+                            .get(&field.name)
+                            .cloned()
+                            .unwrap_or(serde_json::Value::Null);
                         row.push(json_to_value(&v, &field.data_type));
                     }
                 }
                 _ => {
-                    return Err(Error::Storage(
-                        "each JSON line must be an object".into(),
-                    ));
+                    return Err(Error::Storage("each JSON line must be an object".into()));
                 }
             }
             records.push(Record::new(row));
@@ -113,9 +114,18 @@ fn json_to_value(v: &serde_json::Value, target: &DataType) -> Value {
             }
         }
         serde_json::Value::String(s) => match target {
-            DataType::Int64 => s.parse::<i64>().map(Value::Int64).unwrap_or(Value::String(s.clone())),
-            DataType::Float64 => s.parse::<f64>().map(Value::Float64).unwrap_or(Value::String(s.clone())),
-            DataType::Boolean => s.parse::<bool>().map(Value::Boolean).unwrap_or(Value::String(s.clone())),
+            DataType::Int64 => s
+                .parse::<i64>()
+                .map(Value::Int64)
+                .unwrap_or(Value::String(s.clone())),
+            DataType::Float64 => s
+                .parse::<f64>()
+                .map(Value::Float64)
+                .unwrap_or(Value::String(s.clone())),
+            DataType::Boolean => s
+                .parse::<bool>()
+                .map(Value::Boolean)
+                .unwrap_or(Value::String(s.clone())),
             _ => Value::String(s.clone()),
         },
         _ => Value::String(v.to_string()),

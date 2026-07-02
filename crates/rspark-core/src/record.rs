@@ -23,9 +23,7 @@ impl Record {
     }
 
     pub fn get_by_name(&self, schema: &Schema, name: &str) -> Option<&Value> {
-        schema
-            .index_of(name)
-            .and_then(|idx| self.values.get(idx))
+        schema.index_of(name).and_then(|idx| self.values.get(idx))
     }
 
     pub fn len(&self) -> usize {

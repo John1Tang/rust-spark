@@ -16,7 +16,12 @@ pub fn render_create_table(catalog: &dyn Catalog, table_name: &str) -> Result<St
         .iter()
         .map(|f| {
             let nullable = if f.nullable { "" } else { " NOT NULL" };
-            format!("  {} {}{}", quote_ident(&f.name), sql_type(&f.data_type), nullable)
+            format!(
+                "  {} {}{}",
+                quote_ident(&f.name),
+                sql_type(&f.data_type),
+                nullable
+            )
         })
         .collect();
     let columns = if column_lines.is_empty() {

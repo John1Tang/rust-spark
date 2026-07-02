@@ -195,6 +195,11 @@ impl Expr {
         Self::binary(BinaryOp::Or, left, right)
     }
 
+    /// Logical NOT. The `clippy::should_implement_trait` lint is allowed
+    /// because we want an `Expr::Not(...)` builder that mirrors the rest
+    /// of the API rather than implementing `std::ops::Not` (which would
+    /// be ambiguous with the existing `Not` variant).
+    #[allow(clippy::should_implement_trait)]
     pub fn not(inner: Expr) -> Expr {
         Expr::Not(Box::new(inner))
     }
@@ -225,7 +230,9 @@ impl Expr {
                 Literal::Float(v) => v.to_string(),
                 Literal::Str(v) => v.clone(),
             },
-            Expr::Binary { op, left, right } => format!("{} {:?} {}", left.display_name(), op, right.display_name()),
+            Expr::Binary { op, left, right } => {
+                format!("{} {:?} {}", left.display_name(), op, right.display_name())
+            }
             Expr::Not(inner) => format!("NOT {}", inner.display_name()),
             Expr::IsNull(inner) => format!("{} IS NULL", inner.display_name()),
             Expr::IsNotNull(inner) => format!("{} IS NOT NULL", inner.display_name()),
@@ -322,7 +329,11 @@ impl Expr {
             Expr::Not(inner) | Expr::IsNull(inner) | Expr::IsNotNull(inner) => {
                 inner.collect_columns(out)
             }
-            Expr::If { cond, then_expr, else_expr } => {
+            Expr::If {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
                 cond.collect_columns(out);
                 then_expr.collect_columns(out);
                 else_expr.collect_columns(out);
@@ -335,8 +346,12 @@ impl Expr {
     pub fn contains_aggregate(&self) -> bool {
         match self {
             Expr::Aggregate { .. } => true,
-            Expr::Binary { left, right, .. } => left.contains_aggregate() || right.contains_aggregate(),
-            Expr::Not(inner) | Expr::IsNull(inner) | Expr::IsNotNull(inner) => inner.contains_aggregate(),
+            Expr::Binary { left, right, .. } => {
+                left.contains_aggregate() || right.contains_aggregate()
+            }
+            Expr::Not(inner) | Expr::IsNull(inner) | Expr::IsNotNull(inner) => {
+                inner.contains_aggregate()
+            }
             Expr::If {
                 cond,
                 then_expr,
@@ -519,16 +534,10 @@ mod tests {
     #[test]
     fn eval_arithmetic() {
         let schema = schema();
-        let batch = RecordBatch::from_records(
-            schema,
-            vec![Record::new(vec!["alice".into(), 30.into()])],
-        )
-        .unwrap();
-        let expr = Expr::binary(
-            BinaryOp::Add,
-            Expr::col("age"),
-            Expr::lit(5i64),
-        );
+        let batch =
+            RecordBatch::from_records(schema, vec![Record::new(vec!["alice".into(), 30.into()])])
+                .unwrap();
+        let expr = Expr::binary(BinaryOp::Add, Expr::col("age"), Expr::lit(5i64));
         let value = expr.eval(&batch.records()[0], &batch).unwrap();
         assert_eq!(value, Value::Int64(35));
     }
@@ -536,16 +545,10 @@ mod tests {
     #[test]
     fn like_pattern_matches() {
         let schema = schema();
-        let batch = RecordBatch::from_records(
-            schema,
-            vec![Record::new(vec!["alice".into(), 30.into()])],
-        )
-        .unwrap();
-        let expr = Expr::binary(
-            BinaryOp::Like,
-            Expr::col("name"),
-            Expr::lit("a%"),
-        );
+        let batch =
+            RecordBatch::from_records(schema, vec![Record::new(vec!["alice".into(), 30.into()])])
+                .unwrap();
+        let expr = Expr::binary(BinaryOp::Like, Expr::col("name"), Expr::lit("a%"));
         let value = expr.eval(&batch.records()[0], &batch).unwrap();
         assert_eq!(value, Value::Boolean(true));
     }

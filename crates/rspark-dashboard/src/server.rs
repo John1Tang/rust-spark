@@ -1,8 +1,8 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Router;
-use rspark_api::routes::ApiState;
 use rspark_api::routes::build_router;
+use rspark_api::routes::ApiState;
 use rspark_cluster::master::Master;
 use rspark_sql::SessionState;
 use rspark_storage::SourceRegistry;

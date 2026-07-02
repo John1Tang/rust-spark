@@ -92,45 +92,33 @@ impl Value {
             (Value::Boolean(a), Value::Boolean(b)) => Ok(a.cmp(b)),
             (Value::Int32(a), Value::Int32(b)) => Ok(a.cmp(b)),
             (Value::Int64(a), Value::Int64(b)) => Ok(a.cmp(b)),
-            (Value::Float32(a), Value::Float32(b)) => a.partial_cmp(b).ok_or_else(|| {
-                Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-            }),
-            (Value::Float64(a), Value::Float64(b)) => a.partial_cmp(b).ok_or_else(|| {
-                Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-            }),
+            (Value::Float32(a), Value::Float32(b)) => a
+                .partial_cmp(b)
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
+            (Value::Float64(a), Value::Float64(b)) => a
+                .partial_cmp(b)
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
             (Value::String(a), Value::String(b)) => Ok(a.cmp(b)),
             (Value::Int32(a), Value::Int64(b)) => Ok((*a as i64).cmp(b)),
             (Value::Int64(a), Value::Int32(b)) => Ok(a.cmp(&(*b as i64))),
-            (Value::Int32(a), Value::Float64(b)) => {
-                (*a as f64).partial_cmp(b).ok_or_else(|| {
-                    Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-                })
-            }
-            (Value::Float64(a), Value::Int32(b)) => {
-                a.partial_cmp(&(*b as f64)).ok_or_else(|| {
-                    Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-                })
-            }
-            (Value::Int64(a), Value::Float64(b)) => {
-                (*a as f64).partial_cmp(b).ok_or_else(|| {
-                    Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-                })
-            }
-            (Value::Float64(a), Value::Int64(b)) => {
-                a.partial_cmp(&(*b as f64)).ok_or_else(|| {
-                    Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-                })
-            }
-            (Value::Float32(a), Value::Float64(b)) => {
-                (*a as f64).partial_cmp(b).ok_or_else(|| {
-                    Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-                })
-            }
-            (Value::Float64(a), Value::Float32(b)) => {
-                a.partial_cmp(&(*b as f64)).ok_or_else(|| {
-                    Error::Type(format!("cannot compare NaN floats {} and {}", a, b))
-                })
-            }
+            (Value::Int32(a), Value::Float64(b)) => (*a as f64)
+                .partial_cmp(b)
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
+            (Value::Float64(a), Value::Int32(b)) => a
+                .partial_cmp(&(*b as f64))
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
+            (Value::Int64(a), Value::Float64(b)) => (*a as f64)
+                .partial_cmp(b)
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
+            (Value::Float64(a), Value::Int64(b)) => a
+                .partial_cmp(&(*b as f64))
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
+            (Value::Float32(a), Value::Float64(b)) => (*a as f64)
+                .partial_cmp(b)
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
+            (Value::Float64(a), Value::Float32(b)) => a
+                .partial_cmp(&(*b as f64))
+                .ok_or_else(|| Error::Type(format!("cannot compare NaN floats {} and {}", a, b))),
             (a, b) => Err(Error::Type(format!(
                 "cannot compare {} and {}",
                 a.data_type_name(),

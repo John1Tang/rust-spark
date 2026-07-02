@@ -10,13 +10,7 @@ use sqlparser::ast::{
 pub fn build_expr(expr: &SqlExpr) -> Result<Expr> {
     match expr {
         SqlExpr::Identifier(ident) => Ok(Expr::col(ident.value.clone())),
-        SqlExpr::CompoundIdentifier(parts) => {
-            if parts.len() <= 2 {
-                Ok(Expr::col(parts.last().unwrap().value.clone()))
-            } else {
-                Ok(Expr::col(parts.last().unwrap().value.clone()))
-            }
-        }
+        SqlExpr::CompoundIdentifier(parts) => Ok(Expr::col(parts.last().unwrap().value.clone())),
         SqlExpr::Wildcard => Ok(Expr::Star),
         SqlExpr::QualifiedWildcard(parts) => {
             if let Some(last) = parts.0.last() {
@@ -73,11 +67,7 @@ pub fn build_expr(expr: &SqlExpr) -> Result<Expr> {
             negated,
             ..
         } => {
-            let base = Expr::binary(
-                BinaryOp::Like,
-                build_expr(expr)?,
-                build_expr(pattern)?,
-            );
+            let base = Expr::binary(BinaryOp::Like, build_expr(expr)?, build_expr(pattern)?);
             if *negated {
                 Ok(Expr::not(base))
             } else {
@@ -90,11 +80,7 @@ pub fn build_expr(expr: &SqlExpr) -> Result<Expr> {
             negated,
             ..
         } => {
-            let base = Expr::binary(
-                BinaryOp::Like,
-                build_expr(expr)?,
-                build_expr(pattern)?,
-            );
+            let base = Expr::binary(BinaryOp::Like, build_expr(expr)?, build_expr(pattern)?);
             if *negated {
                 Ok(Expr::not(base))
             } else {
@@ -131,17 +117,16 @@ pub fn build_expr(expr: &SqlExpr) -> Result<Expr> {
                 });
             }
             let predicate = or_chain.unwrap_or(Expr::lit(false));
-            Ok(if *negated { Expr::not(predicate) } else { predicate })
+            Ok(if *negated {
+                Expr::not(predicate)
+            } else {
+                predicate
+            })
         }
         SqlExpr::Function(func) => build_function_call(func),
         SqlExpr::Cast { expr, .. } => build_expr(expr),
-        SqlExpr::Subquery(_) => Err(Error::Sql(
-            "scalar subqueries are not yet supported".into(),
-        )),
-        other => Err(Error::Sql(format!(
-            "unsupported SQL expression: {}",
-            other.to_string()
-        ))),
+        SqlExpr::Subquery(_) => Err(Error::Sql("scalar subqueries are not yet supported".into())),
+        other => Err(Error::Sql(format!("unsupported SQL expression: {}", other))),
     }
 }
 
@@ -166,10 +151,7 @@ fn literal_from_value(v: &sqlparser::ast::Value) -> Result<Literal> {
             Literal::Str(s.clone())
         }
         other => {
-            return Err(Error::Sql(format!(
-                "unsupported literal value: {}",
-                other.to_string()
-            )));
+            return Err(Error::Sql(format!("unsupported literal value: {}", other)));
         }
     })
 }
@@ -264,9 +246,7 @@ fn extract_args(func: &Function) -> Result<(Vec<ArgSpec>, bool)> {
                     FunctionArg::Unnamed(FunctionArgExpr::Expr(e)) => {
                         out.push(ArgSpec::Expr(build_expr(e)?))
                     }
-                    FunctionArg::Unnamed(FunctionArgExpr::Wildcard) => {
-                        out.push(ArgSpec::Wildcard)
-                    }
+                    FunctionArg::Unnamed(FunctionArgExpr::Wildcard) => out.push(ArgSpec::Wildcard),
                     FunctionArg::Named { arg, .. } => match arg {
                         FunctionArgExpr::Expr(e) => out.push(ArgSpec::Expr(build_expr(e)?)),
                         FunctionArgExpr::Wildcard => out.push(ArgSpec::Wildcard),
@@ -315,12 +295,6 @@ pub fn build_select_expressions(select: &sqlparser::ast::Select) -> Result<Vec<E
             }
             sqlparser::ast::SelectItem::QualifiedWildcard(_, _)
             | sqlparser::ast::SelectItem::Wildcard(_) => exprs.push(Expr::Star),
-            _ => {
-                return Err(Error::Sql(format!(
-                    "unsupported select item: {}",
-                    item.to_string()
-                )))
-            }
         }
     }
     Ok(exprs)
@@ -379,10 +353,7 @@ pub fn build_table_factor(factor: &TableFactor) -> Result<(String, Option<String
             let alias_name = alias.as_ref().map(|a| a.name.value.clone());
             Ok((base, alias_name, vec![]))
         }
-        other => Err(Error::Sql(format!(
-            "unsupported table factor: {}",
-            other.to_string()
-        ))),
+        other => Err(Error::Sql(format!("unsupported table factor: {}", other))),
     }
 }
 
@@ -434,7 +405,10 @@ pub fn build_from_tables(tables: &[TableWithJoins]) -> Result<Vec<(String, Optio
 
 /// Returns true if the binary operator should be considered commutative (used during plan rewriting).
 pub fn is_commutative_op(op: &BinaryOp) -> bool {
-    matches!(op, BinaryOp::Eq | BinaryOp::NotEq | BinaryOp::Add | BinaryOp::Mul)
+    matches!(
+        op,
+        BinaryOp::Eq | BinaryOp::NotEq | BinaryOp::Add | BinaryOp::Mul
+    )
 }
 
 #[allow(dead_code)]

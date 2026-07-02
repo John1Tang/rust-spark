@@ -62,11 +62,7 @@ impl ExecutionContext {
         find_scan_partitions(plan)
     }
 
-    fn execute_partition(
-        &self,
-        plan: &LogicalPlan,
-        partition: &Partition,
-    ) -> Result<RecordBatch> {
+    fn execute_partition(&self, plan: &LogicalPlan, partition: &Partition) -> Result<RecordBatch> {
         let physical = lower_plan(plan);
         match (&physical, partition) {
             (PhysicalOp::Scan(scan), Partition::WholeFile { path }) => {
@@ -129,10 +125,7 @@ fn collect_partitions(plan: &LogicalPlan, out: &mut Vec<Partition>) {
     }
 }
 
-fn combine_batches(
-    batches: Vec<PartitionedBatch>,
-    output_schema: &Schema,
-) -> Result<RecordBatch> {
+fn combine_batches(batches: Vec<PartitionedBatch>, output_schema: &Schema) -> Result<RecordBatch> {
     let mut combined = RecordBatch::new(output_schema.clone());
     for part in batches {
         for record in part.batch.into_records() {
@@ -162,7 +155,12 @@ impl<'a> LocalExecutor<'a> {
 
     fn materialize_input(&self, plan: &LogicalPlan) -> Result<RecordBatch> {
         match plan {
-            LogicalPlan::Scan { path, source, schema, .. } => {
+            LogicalPlan::Scan {
+                path,
+                source,
+                schema,
+                ..
+            } => {
                 let src = self.context.source_registry.get(source)?;
                 src.scan(path, Some(schema))
             }
@@ -195,7 +193,11 @@ fn apply_tree(
                 *batch = RecordBatch::new(Schema::empty());
             }
         }
-        LogicalPlan::Project { expressions, schema, .. } => {
+        LogicalPlan::Project {
+            expressions,
+            schema,
+            ..
+        } => {
             let has_star = expressions.iter().any(|e| matches!(e, Expr::Star));
             if has_star && expressions.len() == 1 {
                 *batch = RecordBatch::from_records(schema.clone(), batch.records().to_vec())?;
@@ -208,7 +210,9 @@ fn apply_tree(
             }
             *op = lower_plan(plan);
         }
-        LogicalPlan::Filter { predicate, schema, .. } => {
+        LogicalPlan::Filter {
+            predicate, schema, ..
+        } => {
             let mut new_records = Vec::with_capacity(batch.len());
             for record in batch.records() {
                 if eval_predicate(predicate, record, batch)? {

@@ -3,12 +3,10 @@ use rspark_core::expr::{BinaryOp, Expr, Literal};
 use rspark_core::schema::{DataType, Field, Schema};
 use sqlparser::ast::{Expr as SqlExpr, GroupByExpr, Query, Select, SetExpr, Statement};
 
-use crate::expr_builder::{
-    build_expr, build_from_tables, build_select_expressions, combine_and,
-};
+use crate::expr_builder::{build_expr, build_from_tables, build_select_expressions, combine_and};
 use crate::plan::{
-    build_aggregate_schema, build_join_schema, build_project_schema, build_scan_schema,
-    JoinType, LogicalPlan, SortExpr,
+    build_aggregate_schema, build_join_schema, build_project_schema, build_scan_schema, JoinType,
+    LogicalPlan, SortExpr,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -28,11 +26,7 @@ impl Planner {
         last_plan.ok_or_else(|| Error::Sql("no statements to plan".into()))
     }
 
-    pub fn plan_statement(
-        &self,
-        stmt: &Statement,
-        catalog: &dyn Catalog,
-    ) -> Result<LogicalPlan> {
+    pub fn plan_statement(&self, stmt: &Statement, catalog: &dyn Catalog) -> Result<LogicalPlan> {
         match stmt {
             Statement::Query(query) => self.plan_query(query, catalog),
             Statement::Explain { statement, .. } => {
@@ -46,10 +40,7 @@ impl Planner {
             }
             Statement::ShowTables { .. } => Ok(LogicalPlan::Empty),
             Statement::Use { .. } => Ok(LogicalPlan::Empty),
-            other => Err(Error::Sql(format!(
-                "unsupported statement: {}",
-                other.to_string()
-            ))),
+            other => Err(Error::Sql(format!("unsupported statement: {}", other))),
         }
     }
 
@@ -60,7 +51,7 @@ impl Planner {
         let mut plan = self.plan_setexpr(&query.body, catalog)?;
 
         let mut sort_keys = Vec::new();
-        for order_by in &query.order_by {
+        if let Some(order_by) = &query.order_by {
             for inner in &order_by.exprs {
                 sort_keys.push(SortExpr {
                     expr: build_expr(&inner.expr)?,
@@ -107,14 +98,9 @@ impl Planner {
                         schema,
                     })
                 }
-                other => Err(Error::Sql(format!(
-                    "unsupported set operation: {other:?}"
-                ))),
+                other => Err(Error::Sql(format!("unsupported set operation: {other:?}"))),
             },
-            _ => Err(Error::Sql(format!(
-                "unsupported set expression: {}",
-                body.to_string()
-            ))),
+            _ => Err(Error::Sql(format!("unsupported set expression: {}", body))),
         }
     }
 
@@ -250,7 +236,7 @@ fn eval_limit(expr: &SqlExpr) -> Result<usize> {
         }
         other => Err(Error::Sql(format!(
             "unsupported LIMIT expression: {}",
-            other.to_string()
+            other
         ))),
     }
 }
@@ -287,14 +273,32 @@ fn rewrite_having(expr: Expr, projections: &[Expr]) -> Result<Expr> {
 
 fn expr_strictly_matches(a: &Expr, b: &Expr) -> bool {
     match (a, b) {
-        (Expr::Aggregate { func: fa, arg: aa, distinct: da }, Expr::Aggregate { func: fb, arg: ab, distinct: db }) => {
-            fa == fb && da == db && expr_strictly_matches(aa, ab)
-        }
+        (
+            Expr::Aggregate {
+                func: fa,
+                arg: aa,
+                distinct: da,
+            },
+            Expr::Aggregate {
+                func: fb,
+                arg: ab,
+                distinct: db,
+            },
+        ) => fa == fb && da == db && expr_strictly_matches(aa, ab),
         (Expr::Column(na), Expr::Column(nb)) => na == nb,
         (Expr::Literal(la), Expr::Literal(lb)) => la == lb,
-        (Expr::Binary { op: oa, left: la, right: ra }, Expr::Binary { op: ob, left: lb, right: rb }) => {
-            oa == ob && expr_strictly_matches(la, lb) && expr_strictly_matches(ra, rb)
-        }
+        (
+            Expr::Binary {
+                op: oa,
+                left: la,
+                right: ra,
+            },
+            Expr::Binary {
+                op: ob,
+                left: lb,
+                right: rb,
+            },
+        ) => oa == ob && expr_strictly_matches(la, lb) && expr_strictly_matches(ra, rb),
         (Expr::Aliased { expr: aa, .. }, other) => expr_strictly_matches(aa, other),
         (other, Expr::Aliased { expr: ab, .. }) => expr_strictly_matches(other, ab),
         _ => false,
@@ -359,10 +363,10 @@ mod tests {
             source: &str,
             schema: Schema,
         ) -> Result<()> {
-            self.tables
-                .write()
-                .unwrap()
-                .insert(name.to_string(), (path.to_string(), source.to_string(), schema));
+            self.tables.write().unwrap().insert(
+                name.to_string(),
+                (path.to_string(), source.to_string(), schema),
+            );
             Ok(())
         }
     }
@@ -374,7 +378,8 @@ mod tests {
             Field::new("id", DataType::Int64),
             Field::new("name", DataType::String),
         ]);
-        cat.register_table("users", "/tmp/users.csv", "csv", schema).unwrap();
+        cat.register_table("users", "/tmp/users.csv", "csv", schema)
+            .unwrap();
         let plan = Planner::new()
             .plan_sql("SELECT id, name FROM users", &cat)
             .unwrap();
@@ -393,7 +398,8 @@ mod tests {
             Field::new("dept", DataType::String),
             Field::new("salary", DataType::Float64),
         ]);
-        cat.register_table("emp", "/tmp/emp.csv", "csv", schema).unwrap();
+        cat.register_table("emp", "/tmp/emp.csv", "csv", schema)
+            .unwrap();
         let plan = Planner::new()
             .plan_sql(
                 "SELECT dept, AVG(salary) FROM emp WHERE salary > 0 GROUP BY dept",
@@ -409,7 +415,8 @@ mod tests {
     fn plan_count_star() {
         let mut cat = InMemoryCatalog::new();
         let schema = Schema::new(vec![Field::new("a", DataType::Int64)]);
-        cat.register_table("t", "/tmp/t.csv", "csv", schema).unwrap();
+        cat.register_table("t", "/tmp/t.csv", "csv", schema)
+            .unwrap();
         let plan = Planner::new()
             .plan_sql("SELECT COUNT(*) FROM t", &cat)
             .unwrap();
@@ -421,7 +428,8 @@ mod tests {
     fn plan_order_limit() {
         let mut cat = InMemoryCatalog::new();
         let schema = Schema::new(vec![Field::new("a", DataType::Int64)]);
-        cat.register_table("t", "/tmp/t.csv", "csv", schema).unwrap();
+        cat.register_table("t", "/tmp/t.csv", "csv", schema)
+            .unwrap();
         let plan = Planner::new()
             .plan_sql("SELECT a FROM t ORDER BY a DESC LIMIT 10", &cat)
             .unwrap();

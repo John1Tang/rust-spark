@@ -96,10 +96,7 @@ impl ClusterState {
     }
 
     pub fn register_worker(&self, worker: WorkerInfo) {
-        self.inner
-            .workers
-            .write()
-            .insert(worker.id.clone(), worker);
+        self.inner.workers.write().insert(worker.id.clone(), worker);
     }
 
     pub fn remove_worker(&self, worker_id: &str) {
@@ -253,5 +250,10 @@ pub fn default_master_id() -> String {
 }
 
 fn short_id() -> String {
-    Uuid::new_v4().to_string().split('-').next().unwrap_or("0").to_string()
+    Uuid::new_v4()
+        .to_string()
+        .split('-')
+        .next()
+        .unwrap_or("0")
+        .to_string()
 }

@@ -21,7 +21,12 @@ pub struct Task {
 }
 
 impl Task {
-    pub fn new(job_id: impl Into<String>, stage_id: impl Into<String>, partition_label: impl Into<String>, sql: impl Into<String>) -> Self {
+    pub fn new(
+        job_id: impl Into<String>,
+        stage_id: impl Into<String>,
+        partition_label: impl Into<String>,
+        sql: impl Into<String>,
+    ) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             stage_id: stage_id.into(),

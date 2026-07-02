@@ -18,9 +18,7 @@ impl OutputWriter {
         match ext.as_str() {
             "csv" => Self::write_csv(batch, path),
             "json" | "jsonl" | "ndjson" => Self::write_json(batch, path),
-            _ => Err(Error::Storage(format!(
-                "unsupported output format: .{ext}"
-            ))),
+            _ => Err(Error::Storage(format!("unsupported output format: .{ext}"))),
         }
     }
 
@@ -111,7 +109,13 @@ pub fn render_table(batch: &RecordBatch) -> String {
         .collect();
     out.push_str(&header.join(" | "));
     out.push('\n');
-    out.push_str(&widths.iter().map(|w| "-".repeat(*w)).collect::<Vec<_>>().join("-+-"));
+    out.push_str(
+        &widths
+            .iter()
+            .map(|w| "-".repeat(*w))
+            .collect::<Vec<_>>()
+            .join("-+-"),
+    );
     out.push('\n');
     for row in rendered_rows {
         let line: Vec<String> = row
@@ -131,7 +135,11 @@ pub struct SchemaView<'a>(pub &'a Schema);
 
 impl SchemaView<'_> {
     pub fn field_types(&self) -> Vec<DataType> {
-        self.0.fields().iter().map(|f| f.data_type.clone()).collect()
+        self.0
+            .fields()
+            .iter()
+            .map(|f| f.data_type.clone())
+            .collect()
     }
 }
 

@@ -9,7 +9,6 @@ use rspark_cluster::master::Master;
 use rspark_cluster::state::WorkerInfo;
 use rspark_cluster::task::Task;
 use rspark_core::error::Error;
-use rspark_core::RecordBatch;
 use rspark_exec::{ExecutionContext, LocalExecutor};
 use rspark_sql::planner::Catalog;
 use rspark_sql::{render_create_table, try_show_create, Planner, SessionState};
@@ -54,7 +53,10 @@ pub fn build_router(state: ApiState) -> Router {
         .route("/v1/sql", post(execute_sql))
         .route("/v1/catalog/tables", get(list_tables))
         .route("/v1/catalog/tables", post(register_table))
-        .route("/v1/catalog/tables/:name", axum::routing::delete(unregister_table))
+        .route(
+            "/v1/catalog/tables/:name",
+            axum::routing::delete(unregister_table),
+        )
         .route("/v1/catalog/suggestions", get(suggestions))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -76,12 +78,12 @@ async fn register_worker(
     (StatusCode::CREATED, Json(worker))
 }
 
-async fn heartbeat(
-    State(state): State<ApiState>,
-    Path(id): Path<String>,
-) -> impl IntoResponse {
+async fn heartbeat(State(state): State<ApiState>, Path(id): Path<String>) -> impl IntoResponse {
     if state.master.state().worker(&id).is_none() {
-        return (StatusCode::NOT_FOUND, "worker not registered".into_response());
+        return (
+            StatusCode::NOT_FOUND,
+            "worker not registered".into_response(),
+        );
     }
     state.master.state().update_worker_heartbeat(&id);
     (StatusCode::NO_CONTENT, ().into_response())
@@ -124,7 +126,10 @@ async fn fail_task(
     Path(task_id): Path<String>,
     Json(body): Json<FailTaskRequest>,
 ) -> impl IntoResponse {
-    match state.master.complete_task(&task_id, 0, false, Some(body.error)) {
+    match state
+        .master
+        .complete_task(&task_id, 0, false, Some(body.error))
+    {
         Ok(()) => (StatusCode::OK, Json(serde_json::json!({ "status": "ok" }))).into_response(),
         Err(err) => err_response(err),
     }
@@ -383,7 +388,10 @@ async fn register_table(
         Ok(s) => s,
         Err(err) => return err_response(err),
     };
-    match state.catalog.register(&body.name, &body.path, &source, schema) {
+    match state
+        .catalog
+        .register(&body.name, &body.path, &source, schema)
+    {
         Ok(()) => (
             StatusCode::CREATED,
             Json(serde_json::json!({ "status": "ok", "name": body.name })),
@@ -404,18 +412,67 @@ async fn unregister_table(
 }
 
 const SQL_KEYWORDS: &[&str] = &[
-    "SELECT", "FROM", "WHERE", "GROUP", "BY", "ORDER", "HAVING", "LIMIT", "OFFSET",
-    "JOIN", "INNER", "LEFT", "RIGHT", "FULL", "OUTER", "CROSS", "ON", "USING",
-    "AS", "AND", "OR", "NOT", "IN", "BETWEEN", "LIKE", "IS", "NULL", "TRUE", "FALSE",
-    "DISTINCT", "ALL", "UNION", "INTERSECT", "EXCEPT", "ASC", "DESC", "CASE", "WHEN",
-    "THEN", "ELSE", "END", "COALESCE", "NVL",
+    "SELECT",
+    "FROM",
+    "WHERE",
+    "GROUP",
+    "BY",
+    "ORDER",
+    "HAVING",
+    "LIMIT",
+    "OFFSET",
+    "JOIN",
+    "INNER",
+    "LEFT",
+    "RIGHT",
+    "FULL",
+    "OUTER",
+    "CROSS",
+    "ON",
+    "USING",
+    "AS",
+    "AND",
+    "OR",
+    "NOT",
+    "IN",
+    "BETWEEN",
+    "LIKE",
+    "IS",
+    "NULL",
+    "TRUE",
+    "FALSE",
+    "DISTINCT",
+    "ALL",
+    "UNION",
+    "INTERSECT",
+    "EXCEPT",
+    "ASC",
+    "DESC",
+    "CASE",
+    "WHEN",
+    "THEN",
+    "ELSE",
+    "END",
+    "COALESCE",
+    "NVL",
 ];
 
 const SQL_FUNCTIONS: &[&str] = &[
-    "COUNT", "SUM", "AVG", "MIN", "MAX",
-    "ABS", "UPPER", "UCASE", "LOWER", "LCASE",
-    "LENGTH", "CHAR_LENGTH", "CHARACTER_LENGTH",
-    "COALESCE", "NVL",
+    "COUNT",
+    "SUM",
+    "AVG",
+    "MIN",
+    "MAX",
+    "ABS",
+    "UPPER",
+    "UCASE",
+    "LOWER",
+    "LCASE",
+    "LENGTH",
+    "CHAR_LENGTH",
+    "CHARACTER_LENGTH",
+    "COALESCE",
+    "NVL",
 ];
 
 #[derive(Debug, Serialize)]
@@ -492,12 +549,12 @@ mod tests {
     fn value_to_json_serializes_correctly() {
         use rspark_core::value::Value;
         assert_eq!(value_to_json(&Value::Null), serde_json::Value::Null);
-        assert_eq!(value_to_json(&Value::Boolean(true)), serde_json::json!(true));
-        assert_eq!(value_to_json(&Value::Int64(42)), serde_json::json!(42));
         assert_eq!(
-            value_to_json(&Value::Float64(2.5)),
-            serde_json::json!(2.5)
+            value_to_json(&Value::Boolean(true)),
+            serde_json::json!(true)
         );
+        assert_eq!(value_to_json(&Value::Int64(42)), serde_json::json!(42));
+        assert_eq!(value_to_json(&Value::Float64(2.5)), serde_json::json!(2.5));
         assert_eq!(
             value_to_json(&Value::String("hello".into())),
             serde_json::json!("hello")

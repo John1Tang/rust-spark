@@ -12,8 +12,10 @@ use std::sync::Arc;
 pub struct Master {
     state: ClusterState,
     planner: Planner,
-    callback: Arc<Mutex<Option<Box<dyn Fn(&Stage) + Send + Sync>>>>,
+    callback: Arc<Mutex<Option<StageCallback>>>,
 }
+
+type StageCallback = Box<dyn Fn(&Stage) + Send + Sync>;
 
 impl Master {
     pub fn new(state: ClusterState) -> Self {
@@ -248,10 +250,10 @@ mod tests {
             source: &str,
             schema: Schema,
         ) -> Result<()> {
-            self.tables
-                .write()
-                .unwrap()
-                .insert(name.to_string(), (path.to_string(), source.to_string(), schema));
+            self.tables.write().unwrap().insert(
+                name.to_string(),
+                (path.to_string(), source.to_string(), schema),
+            );
             Ok(())
         }
     }

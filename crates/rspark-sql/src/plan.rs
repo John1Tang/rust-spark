@@ -108,12 +108,7 @@ impl LogicalPlan {
     }
 }
 
-pub fn build_scan_schema(
-    name: &str,
-    path: &str,
-    source: &str,
-    schema: Schema,
-) -> LogicalPlan {
+pub fn build_scan_schema(name: &str, path: &str, source: &str, schema: Schema) -> LogicalPlan {
     LogicalPlan::Scan {
         path: path.to_string(),
         source: source.to_string(),
@@ -142,10 +137,7 @@ pub fn build_project_schema(expressions: &[Expr], input: &Schema) -> Result<Sche
     Ok(Schema::new(fields))
 }
 
-pub fn build_aggregate_schema(
-    group_exprs: &[Expr],
-    aggregate_exprs: &[Expr],
-) -> Result<Schema> {
+pub fn build_aggregate_schema(group_exprs: &[Expr], aggregate_exprs: &[Expr]) -> Result<Schema> {
     let mut fields = Vec::with_capacity(group_exprs.len() + aggregate_exprs.len());
     for g in group_exprs {
         fields.push(Field::new(g.display_name(), infer_data_type(g)));
@@ -194,10 +186,18 @@ pub fn infer_data_type(expr: &Expr) -> DataType {
         },
         Expr::Not(_) => DataType::Boolean,
         Expr::IsNull(_) | Expr::IsNotNull(_) => DataType::Boolean,
-        Expr::If { then_expr, else_expr, .. } => {
+        Expr::If {
+            then_expr,
+            else_expr,
+            ..
+        } => {
             let then_ty = infer_data_type(then_expr);
             let else_ty = infer_data_type(else_expr);
-            if then_ty == else_ty { then_ty } else { DataType::String }
+            if then_ty == else_ty {
+                then_ty
+            } else {
+                DataType::String
+            }
         }
         Expr::Column(_) | Expr::Star => DataType::String,
         Expr::Aliased { expr, .. } => infer_data_type(expr),

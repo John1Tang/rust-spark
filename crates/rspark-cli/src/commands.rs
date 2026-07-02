@@ -6,7 +6,6 @@ use rspark_cluster::master::Master;
 use rspark_cluster::state::{ClusterState, WorkerInfo};
 use rspark_core::error::Result;
 use rspark_exec::{ExecutionContext, LocalExecutor};
-use rspark_sql::planner::Catalog;
 use rspark_sql::Planner;
 use rspark_sql::SessionState;
 use rspark_storage::writer::{render_table, OutputWriter};
@@ -73,7 +72,11 @@ async fn run_master(
             ("sales", "examples/data/sales.csv"),
             ("events", "examples/data/events.json"),
         ] {
-            let source = if path.ends_with(".json") { "json" } else { "csv" };
+            let source = if path.ends_with(".json") {
+                "json"
+            } else {
+                "csv"
+            };
             if let Ok(src) = registry.get(source) {
                 if let Ok(schema) = src.infer_schema(path) {
                     let _ = catalog.register(name, path, source, schema);
@@ -84,7 +87,11 @@ async fn run_master(
     for spec in &load {
         if let Some((name, path)) = spec.split_once('=') {
             let lower = path.to_ascii_lowercase();
-            let source = if lower.ends_with(".json") { "json" } else { "csv" };
+            let source = if lower.ends_with(".json") {
+                "json"
+            } else {
+                "csv"
+            };
             let registry = SourceRegistry::with_defaults();
             if let Ok(src) = registry.get(source) {
                 if let Ok(schema) = src.infer_schema(path) {
@@ -110,7 +117,9 @@ async fn run_master(
     let dash_master = master.clone();
     let dash_catalog = catalog.clone();
     let dash_task = tokio::spawn(async move {
-        if let Err(err) = rspark_dashboard::run_dashboard(dashboard_addr, dash_master, dash_catalog).await {
+        if let Err(err) =
+            rspark_dashboard::run_dashboard(dashboard_addr, dash_master, dash_catalog).await
+        {
             tracing::error!(?err, "dashboard server failed");
         }
     });
@@ -119,21 +128,20 @@ async fn run_master(
     Ok(())
 }
 
-async fn run_worker(
-    master: String,
-    bind: String,
-    cores: usize,
-    memory_mb: usize,
-) -> Result<()> {
+async fn run_worker(master: String, bind: String, cores: usize, memory_mb: usize) -> Result<()> {
     let registry = Arc::new(SourceRegistry::with_defaults());
-    let context = ExecutionContext::new(registry.clone());
+    let _context = ExecutionContext::new(registry.clone());
     let info = WorkerInfo::new(bind, cores, memory_mb);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .build()
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
     let register_url = format!("{}/v1/workers", master.trim_end_matches('/'));
-    let resp = client.post(&register_url).json(&info).send().await
+    let resp = client
+        .post(&register_url)
+        .json(&info)
+        .send()
+        .await
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
     if !resp.status().is_success() {
         return Err(rspark_core::error::Error::Cluster(format!(
@@ -141,7 +149,9 @@ async fn run_worker(
             resp.status()
         )));
     }
-    let registered: WorkerInfo = resp.json().await
+    let registered: WorkerInfo = resp
+        .json()
+        .await
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
     info!(id=%registered.id, %master, "worker registered");
     let worker_id = registered.id.clone();
@@ -269,10 +279,14 @@ async fn run_submit(
     let request = JobRequest::new(name, sql).with_parallelism(parallelism);
     let url = match master {
         Some(addr) => format!("{}/v1/jobs", addr.trim_end_matches('/')),
-        None => format!("http://127.0.0.1:7077/v1/jobs"),
+        None => "http://127.0.0.1:7077/v1/jobs".to_string(),
     };
     let client = reqwest::Client::new();
-    let resp = client.post(url).json(&request).send().await
+    let resp = client
+        .post(url)
+        .json(&request)
+        .send()
+        .await
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
     if !resp.status().is_success() {
         return Err(rspark_core::error::Error::Cluster(format!(
@@ -280,9 +294,14 @@ async fn run_submit(
             resp.status()
         )));
     }
-    let body: serde_json::Value = resp.json().await
+    let body: serde_json::Value = resp
+        .json()
+        .await
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
-    println!("{}", serde_json::to_string_pretty(&body).unwrap_or_default());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&body).unwrap_or_default()
+    );
     Ok(())
 }
 
@@ -305,14 +324,20 @@ async fn run_dashboard(addr: String, master: Option<String>) -> Result<()> {
         (state, master, catalog)
     };
     let _ = state;
-    rspark_dashboard::run_dashboard(addr, master_arc, catalog).await
+    rspark_dashboard::run_dashboard(addr, master_arc, catalog)
+        .await
         .map_err(|e| rspark_core::error::Error::Cluster(e.to_string()))
 }
 
-async fn fetch_remote_state(master: String) -> Result<(ClusterState, Arc<Master>, Arc<SessionState>)> {
+async fn fetch_remote_state(
+    master: String,
+) -> Result<(ClusterState, Arc<Master>, Arc<SessionState>)> {
     let client = reqwest::Client::new();
     let url = format!("{}/v1/cluster/snapshot", master.trim_end_matches('/'));
-    let resp = client.get(&url).send().await
+    let resp = client
+        .get(&url)
+        .send()
+        .await
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
     if !resp.status().is_success() {
         return Err(rspark_core::error::Error::Cluster(format!(
@@ -320,7 +345,9 @@ async fn fetch_remote_state(master: String) -> Result<(ClusterState, Arc<Master>
             resp.status()
         )));
     }
-    let snapshot: rspark_cluster::state::ClusterSnapshot = resp.json().await
+    let snapshot: rspark_cluster::state::ClusterSnapshot = resp
+        .json()
+        .await
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
     let state = ClusterState::new(snapshot.master_id.clone());
     for w in snapshot.workers {
@@ -352,22 +379,12 @@ pub fn build_session(
         let entries: serde_json::Value = serde_json::from_str(&content)?;
         if let Some(arr) = entries.as_array() {
             for entry in arr {
-                let name = entry
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| {
-                        rspark_core::error::Error::Storage(
-                            "catalog entry missing 'name'".into(),
-                        )
-                    })?;
-                let path = entry
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| {
-                        rspark_core::error::Error::Storage(
-                            "catalog entry missing 'path'".into(),
-                        )
-                    })?;
+                let name = entry.get("name").and_then(|v| v.as_str()).ok_or_else(|| {
+                    rspark_core::error::Error::Storage("catalog entry missing 'name'".into())
+                })?;
+                let path = entry.get("path").and_then(|v| v.as_str()).ok_or_else(|| {
+                    rspark_core::error::Error::Storage("catalog entry missing 'path'".into())
+                })?;
                 let source = entry
                     .get("source")
                     .and_then(|v| v.as_str())

@@ -19,11 +19,9 @@ pub fn parse_sql(sql: &str) -> Result<Vec<sqlparser::ast::Statement>> {
 }
 
 fn normalize_trailing_semicolon(sql: &str) -> String {
-    if sql.ends_with(';') {
-        sql[..sql.len() - 1].to_string()
-    } else {
-        sql.to_string()
-    }
+    sql.strip_suffix(';')
+        .map(str::to_string)
+        .unwrap_or_else(|| sql.to_string())
 }
 
 #[cfg(test)]

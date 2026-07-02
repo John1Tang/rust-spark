@@ -43,10 +43,7 @@ impl DataSource for CsvSource {
         let mut record = csv::StringRecord::new();
         let mut converted = Vec::new();
         while reader.read_record(&mut record).unwrap_or(false) {
-            let row: Vec<Value> = record
-                .iter()
-                .map(parse_csv_value)
-                .collect();
+            let row: Vec<Value> = record.iter().map(parse_csv_value).collect();
             converted.push(row);
         }
         if !converted.is_empty() {
@@ -90,7 +87,10 @@ impl DataSource for CsvSource {
 
 fn parse_csv_value(raw: &str) -> Value {
     let trimmed = raw.trim();
-    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("null") || trimmed.eq_ignore_ascii_case("none") {
+    if trimmed.is_empty()
+        || trimmed.eq_ignore_ascii_case("null")
+        || trimmed.eq_ignore_ascii_case("none")
+    {
         return Value::Null;
     }
     if trimmed.eq_ignore_ascii_case("true") {
@@ -169,7 +169,7 @@ fn coerce_value(raw: &str, data_type: &DataType) -> Value {
             .unwrap_or_else(|_| Value::String(trimmed.to_string())),
         DataType::Int32 => trimmed
             .parse::<i32>()
-            .map(|v| Value::Int32(v as i32))
+            .map(Value::Int32)
             .unwrap_or_else(|_| Value::String(trimmed.to_string())),
         DataType::Float64 => trimmed
             .parse::<f64>()
@@ -177,7 +177,7 @@ fn coerce_value(raw: &str, data_type: &DataType) -> Value {
             .unwrap_or_else(|_| Value::String(trimmed.to_string())),
         DataType::Float32 => trimmed
             .parse::<f32>()
-            .map(|v| Value::Float32(v as f32))
+            .map(Value::Float32)
             .unwrap_or_else(|_| Value::String(trimmed.to_string())),
         _ => Value::String(trimmed.to_string()),
     }

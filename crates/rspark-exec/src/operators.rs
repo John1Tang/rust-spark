@@ -80,16 +80,27 @@ pub struct JoinOp {
 /// Lower a [`LogicalPlan`] tree into the physical algebra.
 pub fn lower_plan(plan: &LogicalPlan) -> PhysicalOp {
     match plan {
-        LogicalPlan::Scan { path, source, schema, .. } => PhysicalOp::Scan(ScanOp {
+        LogicalPlan::Scan {
+            path,
+            source,
+            schema,
+            ..
+        } => PhysicalOp::Scan(ScanOp {
             path: path.clone(),
             source: source.clone(),
             schema: schema.clone(),
         }),
-        LogicalPlan::Project { expressions, schema, .. } => PhysicalOp::Project(ProjectOp {
+        LogicalPlan::Project {
+            expressions,
+            schema,
+            ..
+        } => PhysicalOp::Project(ProjectOp {
             expressions: expressions.clone(),
             schema: schema.clone(),
         }),
-        LogicalPlan::Filter { predicate, schema, .. } => PhysicalOp::Filter(FilterOp {
+        LogicalPlan::Filter {
+            predicate, schema, ..
+        } => PhysicalOp::Filter(FilterOp {
             predicate: predicate.clone(),
             schema: schema.clone(),
         }),
@@ -161,9 +172,9 @@ fn contains_aggregate(expr: &Expr) -> bool {
         Expr::Aggregate { .. } => true,
         Expr::Aliased { expr, .. } => contains_aggregate(expr),
         Expr::Binary { left, right, .. } => contains_aggregate(left) || contains_aggregate(right),
-        Expr::Not(inner)
-        | Expr::IsNull(inner)
-        | Expr::IsNotNull(inner) => contains_aggregate(inner),
+        Expr::Not(inner) | Expr::IsNull(inner) | Expr::IsNotNull(inner) => {
+            contains_aggregate(inner)
+        }
         _ => false,
     }
 }
@@ -172,31 +183,21 @@ fn contains_aggregate(expr: &Expr) -> bool {
 /// [`Expr::Aliased`]) that has already been materialised into the input
 /// batch, look it up by display name and substitute the precomputed value
 /// before evaluation.
-fn substitute_aggregates(
-    expr: &Expr,
-    record: &Record,
-    batch: &RecordBatch,
-) -> Result<Value> {
+fn substitute_aggregates(expr: &Expr, record: &Record, batch: &RecordBatch) -> Result<Value> {
     match expr {
         Expr::Aggregate { .. } => {
             let name = expr.display_name();
-            let idx = batch
-                .schema()
-                .index_of(&name)
-                .ok_or_else(|| {
-                    Error::Schema(format!("aggregate '{name}' not found in input schema"))
-                })?;
+            let idx = batch.schema().index_of(&name).ok_or_else(|| {
+                Error::Schema(format!("aggregate '{name}' not found in input schema"))
+            })?;
             Ok(record.get(idx).cloned().unwrap_or(Value::Null))
         }
         Expr::Aliased { expr: inner, .. } => match inner.as_ref() {
             Expr::Aggregate { .. } => {
                 let name = expr.display_name();
-                let idx = batch
-                    .schema()
-                    .index_of(&name)
-                    .ok_or_else(|| {
-                        Error::Schema(format!("aggregate '{name}' not found in input schema"))
-                    })?;
+                let idx = batch.schema().index_of(&name).ok_or_else(|| {
+                    Error::Schema(format!("aggregate '{name}' not found in input schema"))
+                })?;
                 Ok(record.get(idx).cloned().unwrap_or(Value::Null))
             }
             _ => inner.eval(record, batch),
@@ -219,10 +220,7 @@ fn apply_binary_op(op: rspark_core::expr::BinaryOp, l: &Value, r: &Value) -> Res
     match op {
         Eq => Ok(Boolean(l == r)),
         NotEq => Ok(Boolean(l != r)),
-        Lt => Ok(Boolean(matches!(
-            l.try_cmp(r)?,
-            std::cmp::Ordering::Less
-        ))),
+        Lt => Ok(Boolean(matches!(l.try_cmp(r)?, std::cmp::Ordering::Less))),
         LtEq => Ok(Boolean(matches!(
             l.try_cmp(r)?,
             std::cmp::Ordering::Less | std::cmp::Ordering::Equal
@@ -243,7 +241,7 @@ fn apply_binary_op(op: rspark_core::expr::BinaryOp, l: &Value, r: &Value) -> Res
             (Boolean(a), Boolean(b)) => Ok(Boolean(*a || *b)),
             _ => Ok(Value::Null),
         },
-        Like => return Err(rspark_core::error::Error::Type(
+        Like => Err(rspark_core::error::Error::Type(
             "LIKE is not yet supported in HAVING predicates".into(),
         )),
         other => Err(rspark_core::error::Error::Execution(format!(
@@ -362,9 +360,16 @@ pub fn aggregate_batch(
 #[derive(Debug, Clone)]
 enum Accumulator {
     Count(i64),
+    /// Distinct-count accumulator; not yet constructed from `Accumulator::new`
+    /// but kept on the enum so future work on `COUNT(DISTINCT col)` plugs in
+    /// without changing call sites that already match on the variant.
+    #[allow(dead_code)]
     CountDistinct(HashSet<String>),
     Sum(f64),
-    Avg { sum: f64, count: i64 },
+    Avg {
+        sum: f64,
+        count: i64,
+    },
     Min(Option<Value>),
     Max(Option<Value>),
 }
@@ -468,7 +473,11 @@ pub fn sort_batch(batch: &RecordBatch, order: &[SortExpr]) -> Result<RecordBatch
                 Ok(c) => c,
                 Err(_) => std::cmp::Ordering::Equal,
             };
-            let cmp = if order[i].ascending { cmp } else { cmp.reverse() };
+            let cmp = if order[i].ascending {
+                cmp
+            } else {
+                cmp.reverse()
+            };
             if cmp != std::cmp::Ordering::Equal {
                 return cmp;
             }
@@ -610,7 +619,10 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result.records()[0].get(0).cloned().unwrap(), Value::Int64(2));
+        assert_eq!(
+            result.records()[0].get(0).cloned().unwrap(),
+            Value::Int64(2)
+        );
     }
 
     #[test]
@@ -631,8 +643,14 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result.records()[0].get(0).cloned().unwrap(), Value::Int64(1));
-        assert_eq!(result.records()[0].get(1).cloned().unwrap(), Value::Int64(2));
+        assert_eq!(
+            result.records()[0].get(0).cloned().unwrap(),
+            Value::Int64(1)
+        );
+        assert_eq!(
+            result.records()[0].get(1).cloned().unwrap(),
+            Value::Int64(2)
+        );
     }
 
     #[test]

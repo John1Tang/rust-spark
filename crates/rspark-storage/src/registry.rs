@@ -13,8 +13,14 @@ pub struct SourceRegistry {
 impl SourceRegistry {
     pub fn with_defaults() -> Self {
         let mut map: HashMap<String, BoxedDataSource> = HashMap::new();
-        map.insert("csv".to_string(), Arc::new(CsvSource::new()) as BoxedDataSource);
-        map.insert("json".to_string(), Arc::new(JsonSource::new()) as BoxedDataSource);
+        map.insert(
+            "csv".to_string(),
+            Arc::new(CsvSource::new()) as BoxedDataSource,
+        );
+        map.insert(
+            "json".to_string(),
+            Arc::new(JsonSource::new()) as BoxedDataSource,
+        );
         Self {
             sources: RwLock::new(map),
         }

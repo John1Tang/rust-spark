@@ -22,17 +22,14 @@ impl SessionState {
         }
     }
 
-    pub fn register(
-        &self,
-        name: &str,
-        path: &str,
-        source: &str,
-        schema: Schema,
-    ) -> Result<()> {
+    pub fn register(&self, name: &str, path: &str, source: &str, schema: Schema) -> Result<()> {
         self.tables
             .write()
             .map_err(|e| Error::InvalidState(format!("catalog lock poisoned: {e}")))?
-            .insert(name.to_string(), (path.to_string(), source.to_string(), schema));
+            .insert(
+                name.to_string(),
+                (path.to_string(), source.to_string(), schema),
+            );
         Ok(())
     }
 

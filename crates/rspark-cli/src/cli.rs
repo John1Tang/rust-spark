@@ -1,7 +1,11 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(name = "rspark", version, about = "A small Spark-compatible engine in Rust")]
+#[command(
+    name = "rspark",
+    version,
+    about = "A small Spark-compatible engine in Rust"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -79,7 +83,14 @@ pub enum Command {
 }
 
 fn default_master_id() -> String {
-    format!("master-{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("0"))
+    format!(
+        "master-{}",
+        uuid::Uuid::new_v4()
+            .to_string()
+            .split('-')
+            .next()
+            .unwrap_or("0")
+    )
 }
 
 fn num_cpus() -> usize {

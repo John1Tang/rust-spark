@@ -24,11 +24,36 @@ fn make_employees_batch() -> RecordBatch {
     RecordBatch::from_records(
         schema,
         vec![
-            Record::new(vec![1i64.into(), "Alice".into(), "Engineering".into(), 95000.into()]),
-            Record::new(vec![2i64.into(), "Bob".into(), "Engineering".into(), 87000.into()]),
-            Record::new(vec![3i64.into(), "Charlie".into(), "Sales".into(), 72000.into()]),
-            Record::new(vec![4i64.into(), "Dave".into(), "Sales".into(), 81000.into()]),
-            Record::new(vec![5i64.into(), "Eve".into(), "Engineering".into(), 102000.into()]),
+            Record::new(vec![
+                1i64.into(),
+                "Alice".into(),
+                "Engineering".into(),
+                95000.into(),
+            ]),
+            Record::new(vec![
+                2i64.into(),
+                "Bob".into(),
+                "Engineering".into(),
+                87000.into(),
+            ]),
+            Record::new(vec![
+                3i64.into(),
+                "Charlie".into(),
+                "Sales".into(),
+                72000.into(),
+            ]),
+            Record::new(vec![
+                4i64.into(),
+                "Dave".into(),
+                "Sales".into(),
+                81000.into(),
+            ]),
+            Record::new(vec![
+                5i64.into(),
+                "Eve".into(),
+                "Engineering".into(),
+                102000.into(),
+            ]),
         ],
     )
     .unwrap()
@@ -50,11 +75,8 @@ fn select_star_returns_all_rows() {
         filter: None,
         schema: batch.schema().clone(),
     };
-    let scan_batch = RecordBatch::from_records(
-        batch.schema().clone(),
-        batch.records().to_vec(),
-    )
-    .unwrap();
+    let scan_batch =
+        RecordBatch::from_records(batch.schema().clone(), batch.records().to_vec()).unwrap();
     let _ = scan;
     let _ = scan_batch;
     assert_eq!(batch.len(), 5);
@@ -77,11 +99,7 @@ fn filter_predicate_via_planner_sql() {
                 filter: None,
                 schema: schema.clone(),
             }),
-            predicate: Expr::binary(
-                BinaryOp::Gt,
-                Expr::col("salary"),
-                Expr::lit(80_000i64),
-            ),
+            predicate: Expr::binary(BinaryOp::Gt, Expr::col("salary"), Expr::lit(80_000i64)),
             schema: schema.clone(),
         }),
         expressions: vec![Expr::col("name"), Expr::col("salary")],
@@ -94,7 +112,10 @@ fn filter_predicate_via_planner_sql() {
     let batch = exec.execute(&plan).unwrap();
     assert_eq!(batch.len(), 11);
     assert_eq!(
-        batch.records()[0].get_by_name(batch.schema(), "name").cloned().unwrap(),
+        batch.records()[0]
+            .get_by_name(batch.schema(), "name")
+            .cloned()
+            .unwrap(),
         "Alice".into()
     );
 }
@@ -116,7 +137,11 @@ fn aggregate_group_by_dept() {
             schema: schema.clone(),
         }),
         group_exprs: vec![Expr::col("dept")],
-        aggregate_exprs: vec![Expr::aggregate(AggregateFn::Avg, Expr::col("salary"), false)],
+        aggregate_exprs: vec![Expr::aggregate(
+            AggregateFn::Avg,
+            Expr::col("salary"),
+            false,
+        )],
         schema: Schema::new(vec![
             Field::new("dept", DataType::String),
             Field::new("avg(salary)", DataType::Float64),
@@ -181,12 +206,7 @@ fn scan_employees_via_planner_returns_rows() {
         Field::new("salary", DataType::Int64),
     ]);
     let path = data_path("examples/data/employees.csv");
-    let scan = build_scan_schema(
-        "employees",
-        &path,
-        "csv",
-        schema,
-    );
+    let scan = build_scan_schema("employees", &path, "csv", schema);
     let exec = executor();
     let batch = exec.execute(&scan).unwrap();
     assert_eq!(batch.len(), 20);
@@ -210,7 +230,9 @@ fn planner_select_star_executes() {
                 .unwrap()
                 .get(name)
                 .map(|t| t.2.clone())
-                .ok_or_else(|| rspark_core::error::Error::NotFound(format!("table '{name}' not found")))
+                .ok_or_else(|| {
+                    rspark_core::error::Error::NotFound(format!("table '{name}' not found"))
+                })
         }
         fn table_location(&self, name: &str) -> rspark_core::error::Result<(String, String)> {
             self.tables
@@ -218,7 +240,9 @@ fn planner_select_star_executes() {
                 .unwrap()
                 .get(name)
                 .map(|t| (t.0.clone(), t.1.clone()))
-                .ok_or_else(|| rspark_core::error::Error::NotFound(format!("table '{name}' not found")))
+                .ok_or_else(|| {
+                    rspark_core::error::Error::NotFound(format!("table '{name}' not found"))
+                })
         }
         fn list_tables(&self) -> rspark_core::error::Result<Vec<String>> {
             Ok(self.tables.read().unwrap().keys().cloned().collect())
@@ -230,10 +254,10 @@ fn planner_select_star_executes() {
             source: &str,
             schema: Schema,
         ) -> rspark_core::error::Result<()> {
-            self.tables
-                .write()
-                .unwrap()
-                .insert(name.to_string(), (path.to_string(), source.to_string(), schema));
+            self.tables.write().unwrap().insert(
+                name.to_string(),
+                (path.to_string(), source.to_string(), schema),
+            );
             Ok(())
         }
     }
