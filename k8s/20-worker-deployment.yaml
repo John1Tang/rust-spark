@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rspark-worker
+  namespace: rspark
+  labels:
+    app: rspark
+    role: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rspark
+      role: worker
+  template:
+    metadata:
+      labels:
+        app: rspark
+        role: worker
+    spec:
+      containers:
+        - name: rspark
+          image: rspark:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/rspark-cli"]
+          args:
+            - "worker"
+            - "--master"
+            - "http://rspark-master:7077"
+            - "--bind"
+            - "0.0.0.0:9090"
+            - "--cores"
+            - "2"
+            - "--memory-mb"
+            - "1024"
+          env:
+            - name: RSPARK_LOG
+              value: "info"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"

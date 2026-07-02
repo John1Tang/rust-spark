@@ -1,0 +1,21 @@
+id,name,dept,salary,hire_date,city
+1,Alice,Engineering,95000,2019-03-12,Seattle
+2,Bob,Engineering,87000,2020-07-08,Seattle
+3,Charlie,Sales,72000,2018-11-20,New York
+4,Dave,Sales,81000,2021-01-15,New York
+5,Eve,Engineering,102000,2017-05-30,Seattle
+6,Frank,Marketing,65000,2022-09-01,Los Angeles
+7,Grace,Engineering,89000,2019-12-12,Seattle
+8,Heidi,Sales,78000,2020-04-22,Chicago
+9,Ivan,Engineering,99000,2018-08-19,Austin
+10,Judy,Marketing,71000,2021-06-30,Los Angeles
+11,Kevin,Engineering,76000,2022-02-14,Seattle
+12,Liam,Sales,83000,2019-10-05,New York
+13,Mia,Marketing,68000,2020-12-18,Chicago
+14,Noah,Engineering,91000,2018-02-09,Seattle
+15,Olivia,Sales,75000,2021-08-21,Chicago
+16,Peter,Engineering,105000,2017-11-11,Seattle
+17,Quinn,Marketing,73000,2020-03-03,Los Angeles
+18,Riley,Sales,88000,2019-05-17,New York
+19,Sophia,Engineering,84000,2021-04-04,Seattle
+20,Tom,Sales,79000,2022-07-15,Chicago

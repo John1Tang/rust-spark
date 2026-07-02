@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rspark-master
+  namespace: rspark
+  labels:
+    app: rspark
+    role: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rspark
+      role: master
+  template:
+    metadata:
+      labels:
+        app: rspark
+        role: master
+    spec:
+      containers:
+        - name: rspark
+          image: rspark:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/rspark-cli"]
+          args:
+            - "master"
+            - "--api-addr"
+            - "0.0.0.0:7077"
+            - "--dashboard-addr"
+            - "0.0.0.0:8080"
+            - "--master-id"
+            - "master-$(POD_NAME)"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: RSPARK_LOG
+              value: "info"
+          ports:
+            - name: api
+              containerPort: 7077
+            - name: dashboard
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: api
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: api
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"

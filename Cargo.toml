@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/rspark-core",
+    "crates/rspark-sql",
+    "crates/rspark-exec",
+    "crates/rspark-storage",
+    "crates/rspark-cluster",
+    "crates/rspark-api",
+    "crates/rspark-dashboard",
+    "crates/rspark-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["rspark contributors"]
+repository = "https://github.com/John1Tang/rust-spark"
+homepage = "https://github.com/John1Tang/rust-spark"
+description = "A small, embeddable Rust re-implementation of Apache Spark's local + distributed SQL execution model."
+readme = "README.md"
+keywords = ["spark", "sql", "dataframe", "distributed", "engine"]
+categories = ["database", "command-line-utilities", "wasm"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+clap = { version = "4", features = ["derive"] }
+sqlparser = "0.52"
+arrow = { version = "53", default-features = false, features = ["csv", "json"] }
+csv = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+futures = "0.3"
+parking_lot = "0.12"
+async-trait = "0.1"
+humantime = "2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

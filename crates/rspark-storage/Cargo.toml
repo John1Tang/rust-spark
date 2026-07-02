@@ -1,0 +1,17 @@
+[package]
+name = "rspark-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rspark-core = { path = "../rspark-core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+csv.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

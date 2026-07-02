@@ -1,0 +1,23 @@
+[package]
+name = "rspark-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rspark-core = { path = "../rspark-core" }
+rspark-sql = { path = "../rspark-sql" }
+rspark-cluster = { path = "../rspark-cluster" }
+rspark-exec = { path = "../rspark-exec" }
+rspark-storage = { path = "../rspark-storage" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+reqwest.workspace = true
+chrono.workspace = true
+tracing.workspace = true

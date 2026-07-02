@@ -1,0 +1,16 @@
+rspark
+Copyright 2026 rspark contributors
+
+This product includes software developed by the rspark contributors.
+
+This product includes software developed by third parties:
+
+- sqlparser-rs — Apache-2.0 — https://github.com/sqlparser-rs/sqlparser-rs
+- axum — MIT — https://github.com/tokio-rs/axum
+- tokio — MIT — https://github.com/tokio-rs/tokio
+- serde — MIT/Apache-2.0 — https://github.com/serde-rs/serde
+- clap — MIT/Apache-2.0 — https://github.com/clap-rs/clap
+- chrono — MIT/Apache-2.0 — https://github.com/chronotope/chrono
+
+For full license texts of these and other dependencies, see `Cargo.lock`
+or run `cargo metadata --format-version=1` to enumerate them.

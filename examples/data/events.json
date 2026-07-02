@@ -1,0 +1,15 @@
+{"id": 1, "event": "click", "user_id": 101, "page": "/home", "duration_ms": 1250}
+{"id": 2, "event": "view", "user_id": 102, "page": "/products", "duration_ms": 3400}
+{"id": 3, "event": "click", "user_id": 101, "page": "/products/widget", "duration_ms": 800}
+{"id": 4, "event": "purchase", "user_id": 103, "page": "/checkout", "duration_ms": 12200}
+{"id": 5, "event": "view", "user_id": 104, "page": "/about", "duration_ms": 2100}
+{"id": 6, "event": "click", "user_id": 102, "page": "/products/gadget", "duration_ms": 950}
+{"id": 7, "event": "click", "user_id": 105, "page": "/home", "duration_ms": 1700}
+{"id": 8, "event": "purchase", "user_id": 101, "page": "/checkout", "duration_ms": 9800}
+{"id": 9, "event": "view", "user_id": 103, "page": "/products/gizmo", "duration_ms": 4500}
+{"id": 10, "event": "click", "user_id": 104, "page": "/contact", "duration_ms": 600}
+{"id": 11, "event": "view", "user_id": 105, "page": "/home", "duration_ms": 1800}
+{"id": 12, "event": "click", "user_id": 103, "page": "/products/widget", "duration_ms": 720}
+{"id": 13, "event": "purchase", "user_id": 102, "page": "/checkout", "duration_ms": 11500}
+{"id": 14, "event": "view", "user_id": 101, "page": "/products/gizmo", "duration_ms": 4200}
+{"id": 15, "event": "click", "user_id": 105, "page": "/about", "duration_ms": 540}
