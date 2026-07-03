@@ -18,6 +18,9 @@ brew install k3d                        # if you don't have k3d already
 ./scripts/port-forward.sh               # dashboard :8080, API :7077
 ./scripts/sql.sh "SELECT * FROM employees LIMIT 5"
 kubectl -n rspark get pods -w
+
+# optionally: a real k8s dashboard
+./k8s/headlamp/apply.sh                 # installs Headlamp at http://127.0.0.1:8099
 ```
 
 That covers 95% of the work. The rest of this file is the why and the
@@ -86,6 +89,50 @@ docker build -f docker/Dockerfile --target builder -t rspark:debug .
 | `k8s/11-master-deployment.yaml`      | Master Deployment with `RollingUpdate` (maxSurge=1, maxUnavailable=0) |
 | `k8s/20-worker-deployment.yaml`      | Worker Deployment (maxSurge=1, maxUnavailable=1) |
 | `k8s/30-pod-disruption-budgets.yaml`  | PDBs: minAvailable=1 on master, maxUnavailable=1 on workers |
+| `k8s/operator/`                      | SparkCluster CRD + operator (see `docs/operator.md`) |
+| `k8s/headlamp/`                      | Headlamp k8s dashboard (see `k8s/headlamp/README.md`) |
+
+### Standard k8s dashboard via Headlamp
+
+Headlamp is the recommended UI for browsing the cluster state — it has
+better CRD support than the upstream `kubernetes/dashboard` and the
+single-OCI image keeps the image-pull path simple. See
+[`k8s/headlamp/README.md`](../k8s/headlamp/README.md) for the install
+procedure; the TL;DR is:
+
+```bash
+docker pull ghcr.io/headlamp-k8s/headlamp:latest
+k3d image import ghcr.io/headlamp-k8s/headlamp:latest -c rspark
+./k8s/headlamp/apply.sh
+kubectl -n headlamp port-forward svc/headlamp 8099:4466 --address 127.0.0.1
+# open http://127.0.0.1:8099
+```
+
+The cluster picker on the home page lists the in-cluster kubeconfig
+(`default`) — click it to see the full cluster topology, the rspark
+operator's `SparkCluster` CRD, and live pod logs.
+| `k8s/operator/`                      | SparkCluster CRD + operator (see `docs/operator.md`) |
+| `k8s/headlamp/`                      | Headlamp k8s dashboard (see `k8s/headlamp/README.md`) |
+
+### Standard k8s dashboard via Headlamp
+
+Headlamp is the recommended UI for browsing the cluster state — it has
+better CRD support than the upstream `kubernetes/dashboard` and the
+single-OCI image keeps the image-pull path simple. See
+[`k8s/headlamp/README.md`](../k8s/headlamp/README.md) for the install
+procedure; the TL;DR is:
+
+```bash
+docker pull ghcr.io/headlamp-k8s/headlamp:latest
+k3d image import ghcr.io/headlamp-k8s/headlamp:latest -c rspark
+./k8s/headlamp/apply.sh
+kubectl -n headlamp port-forward svc/headlamp 8099:4466 --address 127.0.0.1
+# open http://127.0.0.1:8099
+```
+
+The cluster picker on the home page will list the in-cluster
+kubeconfig — click it to see the full cluster topology, the rspark
+operator's `SparkCluster` CRD, and live pod logs.
 
 Master is `replicas: 1` because state is per-pod in-memory. If you wire
 a shared backend into `ClusterState`, you can bump `replicas` and add

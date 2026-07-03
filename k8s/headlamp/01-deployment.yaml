@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: headlamp
+  name: headlamp
+  namespace: headlamp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: headlamp
+  template:
+    metadata:
+      labels:
+        app: headlamp
+    spec:
+      containers:
+      - env:
+        - name: HEADLAMP_CONFIG
+          value: '{"port":4466,"listenAddr":"0.0.0.0","useInCluster":false,"role":"admin"}'
+        image: ghcr.io/headlamp-k8s/headlamp:latest
+        imagePullPolicy: IfNotPresent
+        name: headlamp
+        ports:
+        - containerPort: 4466
+          name: http
+        volumeMounts:
+        - mountPath: /home/headlamp/.kube
+          name: kubeconfig
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - "set -eux\nmkdir -p /home/headlamp/.kube\ncat > /home/headlamp/.kube/config\
+          \ <<EOF2\napiVersion: v1\nkind: Config\nclusters:\n- name: in-cluster\n\
+          \  cluster:\n    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n\
+          \    server: https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}\n\
+          contexts:\n- name: default\n  context:\n    cluster: in-cluster\n    namespace:\
+          \ default\n    user: headlamp\ncurrent-context: default\nusers:\n- name:\
+          \ headlamp\n  user:\n    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token\n\
+          EOF2\ncat /home/headlamp/.kube/config\n"
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: kubernetes.default.svc
+        - name: KUBERNETES_SERVICE_PORT
+          value: '443'
+        image: ghcr.io/headlamp-k8s/headlamp:latest
+        imagePullPolicy: IfNotPresent
+        name: materialize-kubeconfig
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
+        - mountPath: /home/headlamp/.kube
+          name: kubeconfig
+      serviceAccountName: headlamp
+      volumes:
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
+      - emptyDir: {}
+        name: kubeconfig

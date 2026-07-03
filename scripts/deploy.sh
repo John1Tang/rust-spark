@@ -59,6 +59,17 @@ docker build -f docker/Dockerfile -t "$IMAGE" .
 say "importing $IMAGE into k3d cluster '$CLUSTER'"
 k3d image import "$IMAGE" -c "$CLUSTER"
 
+# Best-effort: ensure the optional Headlamp image is in the cluster so
+# `./k8s/headlamp/apply.sh` works without a separate `docker pull` step.
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -d "$ROOT/k8s/headlamp" ]; then
+    if ! docker exec "k3d-${CLUSTER}-server-0" crictl images 2>/dev/null | grep -q "ghcr.io/headlamp-k8s/headlamp"; then
+        say "importing Headlamp image (best-effort)"
+        docker pull ghcr.io/headlamp-k8s/headlamp:latest 2>/dev/null || true
+        k3d image import ghcr.io/headlamp-k8s/headlamp:latest -c "$CLUSTER" 2>/dev/null || true
+    fi
+fi
+
 # Detect platform for cross-compile.
 ARCH="$(uname -m)"
 case "$ARCH" in

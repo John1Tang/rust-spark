@@ -11,6 +11,7 @@ by someone new to the codebase.
 | Use the local CLI                                | [cli.md](cli.md)                                 |
 | Call the HTTP API                                | [api.md](api.md)                                 |
 | Drive the dashboard from a browser                | [dashboard.md](dashboard.md)                     |
+| Browse the cluster visually (Headlamp)        | [headlamp.md](headlamp.md) / `k8s/headlamp/README.md` |
 | Use the k8s operator                              | [operator.md](operator.md)                       |
 | Read the architecture end-to-end                  | [architecture.md](architecture.md)               |
 | Ship a change (commit + push + rolling update)    | [skills.md](skills.md) — run the `post-work` skill |

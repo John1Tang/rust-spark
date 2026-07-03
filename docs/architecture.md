@@ -32,6 +32,12 @@ crates/
 └── rspark-operator    — kube-rs controller for the SparkCluster CRD
 ```
 
+The rspark crates own the data path (SQL → executor → record batch).
+The k3d cluster holds the runtime; the rspark-operator owns the
+lifecycle of the master/worker as a single SparkCluster CR. The rspark
+dashboard is the SQL-facing UI; Headlamp (under `k8s/headlamp/`) is the
+cluster-facing UI (CRD inspector, pod logs, logins).
+
 ### rspark-core
 
 The vocabulary of the engine. `Value` is a tagged enum
