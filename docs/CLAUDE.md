@@ -13,6 +13,7 @@ by someone new to the codebase.
 | Drive the dashboard from a browser                | [dashboard.md](dashboard.md)                     |
 | Use the k8s operator                              | [operator.md](operator.md)                       |
 | Read the architecture end-to-end                  | [architecture.md](architecture.md)               |
+| Ship a change (commit + push + rolling update)    | [skills.md](skills.md) — run the `post-work` skill |
 | Make a change to the codebase                     | [CONTRIBUTING.md](../CONTRIBUTING.md) + [CLAUDE.md](../CLAUDE.md) |
 
 ## Top-level index (the "wiki")
