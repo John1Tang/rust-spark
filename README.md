@@ -132,17 +132,19 @@ brew install k3d
 ./scripts/cluster-up.sh        # creates the `rspark` cluster if needed
 
 # each time you have a feature/improvement
-./scripts/deploy.sh            # build image, import to k3d, rollout restart
+./scripts/deploy.sh            # build image, rebuild operator, import to k3d, rollout restart
 
 # use it
 ./scripts/port-forward.sh      # http://127.0.0.1:8080 (dashboard), :7077 (API)
 ./scripts/sql.sh "SELECT dept, COUNT(*) FROM employees GROUP BY dept"
 ```
 
-The deploy script is the loop you'll repeat: it builds `rspark:latest`, imports it
-into the running k3d cluster, and runs `kubectl rollout restart` on the master
-and worker Deployments. The master uses `maxSurge=1, maxUnavailable=0` so a
-new pod comes up before the old one drains — in-flight SQL queries keep
+The deploy script is the loop you'll repeat: it builds `rspark:latest`,
+cross-compiles the operator binary (musl), wraps it in a small Ubuntu
+image, imports both into the running k3d cluster, then runs
+`kubectl rollout restart` on the master + worker + operator
+Deployments. The master uses `maxSurge=1, maxUnavailable=0` so a new pod
+comes up before the old one drains — in-flight SQL queries keep
 running.
 
 ```bash
@@ -153,6 +155,25 @@ kubectl -n rspark logs -l role=master --tail=50
 
 For production-grade k3s (not k3d-in-Docker), the manifests in `k8s/` apply
 unchanged; just `kubectl apply -f k8s/` against your cluster.
+
+## Kubernetes operator
+
+The `SparkCluster` custom resource lets you manage an rspark deployment
+as a single Kubernetes object. One CR == one master + N workers.
+
+```bash
+# install the operator (CRD + RBAC + Deployment + a sample CR)
+kubectl apply -f k8s/operator/
+
+# watch it come up
+kubectl -n rspark get sparkcluster -w
+
+# edit it (rolling update triggered automatically)
+kubectl -n rspark edit sparkcluster demo
+```
+
+See [`docs/operator.md`](docs/operator.md) for the CRD reference and
+[`docs/deployment.md`](docs/deployment.md) for the full handbook.
 
 ## Architecture
 
@@ -166,6 +187,7 @@ crates/
 ├── rspark-api         axum HTTP API for cluster control
 ├── rspark-dashboard   Self-contained HTML/JS dashboard
 └── rspark-cli         clap subcommands: master, worker, sql, submit, shell, dashboard
+└── rspark-operator    kube-rs controller for the SparkCluster CRD
 ```
 
 A `LogicalPlan` is lowered to a `PhysicalOp` tree (`Scan / Project / Filter / Aggregate / Sort / Limit / Join`) and applied row-by-row over `RecordBatch`es in `rspark-exec::LocalExecutor::execute`. In cluster mode the master splits a job into tasks, hands each task to a worker, and the worker reuses the same executor pipeline locally.

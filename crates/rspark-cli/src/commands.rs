@@ -137,22 +137,30 @@ async fn run_worker(master: String, bind: String, cores: usize, memory_mb: usize
         .build()
         .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
     let register_url = format!("{}/v1/workers", master.trim_end_matches('/'));
-    let resp = client
-        .post(&register_url)
-        .json(&info)
-        .send()
-        .await
-        .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
-    if !resp.status().is_success() {
-        return Err(rspark_core::error::Error::Cluster(format!(
-            "worker registration failed: {}",
-            resp.status()
-        )));
-    }
-    let registered: WorkerInfo = resp
-        .json()
-        .await
-        .map_err(|e| rspark_core::error::Error::Network(e.to_string()))?;
+
+    // Retry registration until the master is reachable. Workers used
+    // to fail-fast on the first network error, which made rolling
+    // upgrades of the master a race: workers that started before the
+    // new master came up would exit. The retry keeps them in the pool.
+    let mut backoff_ms = 200u64;
+    let registered: WorkerInfo = loop {
+        match client.post(&register_url).json(&info).send().await {
+            Ok(resp) if resp.status().is_success() => match resp.json().await {
+                Ok(w) => break w,
+                Err(e) => {
+                    tracing::warn!(error = %e, "register response not JSON; retrying");
+                }
+            },
+            Ok(resp) => {
+                tracing::warn!(status = %resp.status(), "registration failed; retrying");
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "registration network error; retrying");
+            }
+        }
+        sleep(Duration::from_millis(backoff_ms)).await;
+        backoff_ms = (backoff_ms * 2).min(5_000);
+    };
     info!(id=%registered.id, %master, "worker registered");
     let worker_id = registered.id.clone();
     loop {

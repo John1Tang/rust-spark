@@ -9,6 +9,7 @@ members = [
     "crates/rspark-api",
     "crates/rspark-dashboard",
     "crates/rspark-cli",
+    "crates/rspark-operator",
 ]
 
 [workspace.package]

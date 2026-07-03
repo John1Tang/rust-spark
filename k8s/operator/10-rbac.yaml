@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rspark-operator
+  namespace: rspark
+  labels:
+    app.kubernetes.io/name: rspark-operator
+    app.kubernetes.io/managed-by: rspark-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rspark-operator
+  labels:
+    app.kubernetes.io/name: rspark-operator
+rules:
+  # Watch + manage SparkCluster CRs.
+  - apiGroups: [spark.rspark.io]
+    resources: [sparkclusters, sparkclusters/status]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # Own and manage the children: Deployments, Services, ConfigMaps,
+  # ServiceAccounts, PodDisruptionBudgets, and read Pods for status.
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [services, configmaps, serviceaccounts, pods]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # The CRD lives at the cluster scope but we only need to read it.
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rspark-operator
+  labels:
+    app.kubernetes.io/name: rspark-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rspark-operator
+subjects:
+  - kind: ServiceAccount
+    name: rspark-operator
+    namespace: rspark

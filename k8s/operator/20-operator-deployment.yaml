@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rspark-operator
+  namespace: rspark
+  labels:
+    app.kubernetes.io/name: rspark-operator
+    app.kubernetes.io/managed-by: rspark-operator
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rspark-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rspark-operator
+    spec:
+      serviceAccountName: rspark-operator
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: rspark-operator
+          image: rspark-operator:latest
+          imagePullPolicy: Never
+          command: ["/usr/local/bin/rspark-operator"]
+          env:
+            - name: RUST_LOG
+              value: "info,rspark_operator=debug"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            # The operator doesn't expose an HTTP port; exec probes
+            # against the binary itself keep the kubelet happy.
+            exec:
+              command: ["/bin/true"]
+            initialDelaySeconds: 10
+            periodSeconds: 30

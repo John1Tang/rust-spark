@@ -1,0 +1,18 @@
+# A first SparkCluster the operator will reconcile.
+apiVersion: spark.rspark.io/v1alpha1
+kind: SparkCluster
+metadata:
+  name: demo
+  namespace: rspark
+spec:
+  image: rspark:latest
+  imagePullPolicy: Never
+  master:
+    replicas: 1
+    examples: true
+    load:
+      - "users=examples/data/employees.csv"
+  workers:
+    replicas: 2
+    cores: 2
+    memoryMb: 1024

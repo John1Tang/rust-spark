@@ -1,0 +1,32 @@
+[package]
+name = "rspark-operator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "rspark-operator"
+path = "src/main.rs"
+
+[dependencies]
+rspark-core = { path = "../rspark-core" }
+rspark-cluster = { path = "../rspark-cluster" }
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml = "0.9"
+thiserror.workspace = true
+anyhow.workspace = true
+tokio = { workspace = true }
+async-trait.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true }
+kube = { version = "1", features = ["runtime", "derive"] }
+k8s-openapi = { version = "0.25", features = ["v1_30"] }
+schemars = "=0.8.22"
+futures.workspace = true
+parking_lot.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util", "macros"] }
+kube = { version = "1", features = ["runtime", "derive", "client"] }
