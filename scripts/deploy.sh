@@ -36,6 +36,23 @@ say "checking cluster '$CLUSTER' is up"
 k3d cluster list 2>/dev/null | grep -qE "^${CLUSTER}\b" \
     || die "cluster '$CLUSTER' not running. Start it: k3d cluster create $CLUSTER"
 
+# If the build needs Docker Hub, the SOCKS5→HTTP bridge may need to be up.
+# The `socks-to-http-bridge` skill provides this; we just check and start
+# it here for the operator's own docker build step.
+if ! nc -z 127.0.0.1 8888 2>/dev/null; then
+    if [ -f "$HOME/.claude/skills/socks-to-http-bridge/socks-to-http.py" ]; then
+        say "starting SOCKS5→HTTP bridge (socks-to-http-bridge skill)"
+        pkill -f socks-to-http.py 2>/dev/null || true
+        nohup python3 "$HOME/.claude/skills/socks-to-http-bridge/socks-to-http.py" \
+            > /tmp/socks-to-http.log 2>&1 &
+        sleep 1
+        nc -z 127.0.0.1 8888 || die "socks-to-http bridge failed to start; see /tmp/socks-to-http.log"
+    else
+        say "warning: SOCKS5→HTTP bridge not running on 127.0.0.1:8888"
+        say "         (install ~/.claude/skills/socks-to-http-bridge if Docker Hub is unreachable)"
+    fi
+fi
+
 say "building $IMAGE (master + worker)"
 docker build -f docker/Dockerfile -t "$IMAGE" .
 
