@@ -5,6 +5,25 @@ This codebase relies on two Claude Code skills installed in the user's
 (the repo's `.claude/` is gitignored for the Claude preview tool's
 own per-project config).
 
+## Network access through the SOCKS5 proxy
+
+This machine reaches the internet only through the SOCKS5 proxy at
+`127.0.0.1:10808`. Two helper scripts make that work for the tools
+rspark needs:
+
+- `~/.claude/skills/socks-to-http-bridge/socks-to-http.py` — a tiny
+  Python SOCKS5→HTTP-CONNECT bridge. Listens on `127.0.0.1:8888` and
+  forwards HTTP CONNECT requests to the SOCKS5 proxy. Run it before
+  any operation that needs to reach Docker Hub from the host.
+- `~/.local/bin/git-socks-proxy` — a `git core.gitProxyCommand` wrapper
+  that uses BSD `nc -X 5` to tunnel git over the SOCKS5 proxy. Set via
+  `git config --global core.gitProxyCommand "$HOME/.local/bin/git-socks-proxy %h %p"`.
+  Without this, `git push` and `git fetch` time out.
+
+The `post-work` skill depends on the bridge being up for the
+`docker build` step. The `socks-to-http-bridge` skill is what
+auto-starts it.
+
 ## `socks-to-http-bridge`
 
 A small Python SOCKS5→HTTP-CONNECT bridge so `docker build` can reach
