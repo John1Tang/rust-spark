@@ -13,3 +13,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
+arrow.workspace = true
+arrow-array.workspace = true
+arrow-schema.workspace = true

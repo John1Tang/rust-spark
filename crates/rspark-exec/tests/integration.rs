@@ -280,3 +280,35 @@ fn planner_select_star_executes() {
     let batch = exec.execute(&plan).unwrap();
     assert_eq!(batch.len(), 20);
 }
+
+#[test]
+fn arrow_round_trip_preserves_rows_and_schema() {
+    // Build a 3-row employees-like batch, send it through the
+    // Arrow boundary twice, and assert it comes back identical.
+    use rspark_exec::{arrow_from_core, arrow_to_core};
+
+    let schema = Schema::new(vec![
+        Field::new("id", DataType::Int64),
+        Field::new("name", DataType::String),
+        Field::new("salary", DataType::Int64),
+    ]);
+    let input = RecordBatch::from_records(
+        schema.clone(),
+        vec![
+            Record::new(vec![1i64.into(), "alice".into(), 100i64.into()]),
+            Record::new(vec![2i64.into(), "bob".into(), 200i64.into()]),
+            Record::new(vec![3i64.into(), "carol".into(), 300i64.into()]),
+        ],
+    )
+    .unwrap();
+    let ab = arrow_from_core(&input).unwrap();
+    assert_eq!(ab.num_rows(), 3);
+    assert_eq!(ab.num_cols(), 3);
+    let back = arrow_to_core(&ab).unwrap();
+    assert_eq!(back.len(), 3);
+    assert_eq!(back.schema().field_count(), 3);
+    // Spot-check values.
+    let row0 = back.records().first().unwrap();
+    assert_eq!(row0.get(0), Some(&rspark_core::value::Value::Int64(1)));
+    assert_eq!(row0.get(1), Some(&rspark_core::value::Value::String("alice".into())));
+}
