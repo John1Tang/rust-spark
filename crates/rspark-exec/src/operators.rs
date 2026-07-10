@@ -130,8 +130,13 @@ pub fn lower_plan(plan: &LogicalPlan) -> PhysicalOp {
             schema: schema.clone(),
         }),
         LogicalPlan::Union { schema, .. } | LogicalPlan::Distinct { schema, .. } => {
-            PhysicalOp::Project(ProjectOp {
-                expressions: vec![Expr::lit(0i64)],
+            // `apply_tree` matches on `&LogicalPlan`, not `&PhysicalOp`,
+            // so the op returned here is never read for these variants.
+            // We still have to return *something* to keep the enum
+            // exhaustive; a zero-row Limit mirrors what the executor
+            // would produce if `apply_tree` happened to no-op.
+            PhysicalOp::Limit(LimitOp {
+                count: 0,
                 schema: schema.clone(),
             })
         }
@@ -500,12 +505,19 @@ pub fn limit_batch(batch: &RecordBatch, count: usize) -> Result<RecordBatch> {
     RecordBatch::from_records(batch.schema().clone(), new_records)
 }
 
-/// Inner-join two batches on the given column name pairs.
+/// Join two batches on the given column name pairs.
+///
+/// `Inner` and `Left` are implemented; other variants are rejected at
+/// runtime so a half-supported plan doesn't silently misjoin.
 pub fn join_batches(
     left: &RecordBatch,
     right: &RecordBatch,
     pairs: &[(String, String)],
+    how: JoinType,
 ) -> Result<RecordBatch> {
+    if matches!(how, JoinType::Right | JoinType::Full) {
+        return Err(Error::Execution(format!("{how:?} join not implemented")));
+    }
     let mut fields = left.schema().fields().to_vec();
     for f in right.schema().fields() {
         if !pairs.iter().any(|(ln, _)| ln == &f.name) {
@@ -515,8 +527,9 @@ pub fn join_batches(
     let schema = Schema::new(fields);
     let mut out_records = Vec::new();
     for l in left.records() {
+        let mut matched = false;
         for r in right.records() {
-            let mut matched = true;
+            let mut cond = true;
             for (l_name, r_name) in pairs {
                 let l_idx = left.schema().index_of(l_name);
                 let r_idx = right.schema().index_of(r_name);
@@ -524,12 +537,13 @@ pub fn join_batches(
                     let lv = l.get(li).cloned().unwrap_or(Value::Null);
                     let rv = r.get(ri).cloned().unwrap_or(Value::Null);
                     if lv != rv {
-                        matched = false;
+                        cond = false;
                         break;
                     }
                 }
             }
-            if matched {
+            if cond {
+                matched = true;
                 let mut row: Vec<Value> = Vec::with_capacity(schema.field_count());
                 row.extend(l.values().iter().cloned());
                 for f in right.schema().fields() {
@@ -541,6 +555,17 @@ pub fn join_batches(
                 }
                 out_records.push(Record::new(row));
             }
+        }
+        if !matched && matches!(how, JoinType::Left) {
+            // Left row with no right match: pad right-side fields with NULL.
+            let mut row: Vec<Value> = Vec::with_capacity(schema.field_count());
+            row.extend(l.values().iter().cloned());
+            for f in right.schema().fields() {
+                if !pairs.iter().any(|(ln, _)| ln == &f.name) {
+                    row.push(Value::Null);
+                }
+            }
+            out_records.push(Record::new(row));
         }
     }
     RecordBatch::from_records(schema, out_records)
@@ -687,8 +712,48 @@ mod tests {
         right
             .push(Record::new(vec![2i64.into(), 85.0.into()]))
             .unwrap();
-        let joined = join_batches(&left, &right, &[("id".into(), "id".into())]).unwrap();
+        let joined = join_batches(
+            &left,
+            &right,
+            &[("id".into(), "id".into())],
+            JoinType::Inner,
+        )
+        .unwrap();
         assert_eq!(joined.len(), 2);
         assert_eq!(joined.schema().field_count(), 3);
+    }
+
+    #[test]
+    fn left_join_pads_unmatched_with_null() {
+        // Left side has 2 rows; right has 1 match for id=1 only.
+        // Left join should yield 2 rows; the id=2 row gets a NULL score.
+        let left = people_batch();
+        let mut right = RecordBatch::new(Schema::new(vec![
+            Field::new("id", DataType::Int64),
+            Field::new("score", DataType::Float64),
+        ]));
+        right
+            .push(Record::new(vec![1i64.into(), 95.0.into()]))
+            .unwrap();
+        let joined =
+            join_batches(&left, &right, &[("id".into(), "id".into())], JoinType::Left).unwrap();
+        assert_eq!(joined.len(), 2);
+        // Row for id=2 has no score match → score is NULL.
+        let score_idx = joined.schema().index_of("score").unwrap();
+        let bob_row = joined
+            .records()
+            .iter()
+            .find(|r| matches!(r.get(0), Some(Value::Int64(2))))
+            .unwrap();
+        assert_eq!(bob_row.get(score_idx), Some(&Value::Null));
+    }
+
+    #[test]
+    fn unsupported_join_types_error() {
+        let left = people_batch();
+        let right = people_batch();
+        for how in [JoinType::Right, JoinType::Full] {
+            assert!(join_batches(&left, &right, &[("id".into(), "id".into())], how).is_err());
+        }
     }
 }

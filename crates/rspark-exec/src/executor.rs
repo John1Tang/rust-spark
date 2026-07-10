@@ -257,9 +257,8 @@ fn apply_tree(
                 let exec = LocalExecutor::new(ctx);
                 exec.execute(right)?
             };
-            let joined = join_batches(&left_batch, &right_batch, on)?;
+            let joined = join_batches(&left_batch, &right_batch, on, *how)?;
             *batch = RecordBatch::from_records(schema.clone(), joined.into_records())?;
-            let _ = how;
             *op = lower_plan(plan);
         }
         LogicalPlan::Union { inputs, schema, .. } => {
