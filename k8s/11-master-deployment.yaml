@@ -71,6 +71,25 @@ spec:
                   fieldPath: metadata.name
             - name: RSPARK_LOG
               value: "info"
+            # S3 / MinIO wiring — see k8s/minio/. The values match the
+            # minio-credentials secret's defaults; production should
+            # override via a different Secret + envFrom.
+            - name: AWS_S3_BUCKET
+              value: "rspark-data"
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: AWS_ENDPOINT_URL_S3
+              value: "http://minio.rspark.svc.cluster.local:9000"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
           ports:
             - name: api
               containerPort: 7077

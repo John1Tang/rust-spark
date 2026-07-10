@@ -67,6 +67,7 @@ async fn run_master(
 
     if examples {
         let registry = SourceRegistry::with_defaults();
+        let _ = rspark_storage::s3_source::try_register_s3(&registry).await;
         for (name, path) in [
             ("employees", "examples/data/employees.csv"),
             ("sales", "examples/data/sales.csv"),
@@ -93,6 +94,7 @@ async fn run_master(
                 "csv"
             };
             let registry = SourceRegistry::with_defaults();
+            let _ = rspark_storage::s3_source::try_register_s3(&registry).await;
             if let Ok(src) = registry.get(source) {
                 if let Ok(schema) = src.infer_schema(path) {
                     let _ = catalog.register(name, path, source, schema);
@@ -130,6 +132,7 @@ async fn run_master(
 
 async fn run_worker(master: String, bind: String, cores: usize, memory_mb: usize) -> Result<()> {
     let registry = Arc::new(SourceRegistry::with_defaults());
+    let _ = rspark_storage::s3_source::try_register_s3(&registry).await;
     let _context = ExecutionContext::new(registry.clone());
     let info = WorkerInfo::new(bind, cores, memory_mb);
     let client = reqwest::Client::builder()
@@ -315,7 +318,7 @@ async fn run_submit(
 
 async fn run_shell(input_format: String, input: Vec<String>) -> Result<()> {
     let session = build_session(None, &input_format, &input)?;
-    start_repl(session);
+    start_repl(session).await;
     Ok(())
 }
 

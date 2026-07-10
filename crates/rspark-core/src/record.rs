@@ -116,6 +116,10 @@ impl RecordBatch {
         self.records
     }
 
+    pub fn into_schema(self) -> Schema {
+        self.schema
+    }
+
     pub fn iter(&self) -> std::slice::Iter<'_, Record> {
         self.records.iter()
     }

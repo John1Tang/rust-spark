@@ -4,7 +4,7 @@ use rspark_core::schema::{DataType, Field, Schema};
 use rspark_core::value::Value;
 use rspark_core::{Record, RecordBatch};
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufRead, BufReader};
 
 pub struct JsonSource;
 
@@ -12,45 +12,25 @@ impl JsonSource {
     pub fn new() -> Self {
         Self
     }
-}
 
-impl Default for JsonSource {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DataSource for JsonSource {
-    fn name(&self) -> &'static str {
-        "json"
-    }
-
-    fn infer_schema(&self, path: &str) -> Result<Schema> {
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-        let stream = serde_json::Deserializer::from_reader(reader).into_iter::<serde_json::Value>();
-        let mut fields: Vec<Field> = Vec::new();
-        for value in stream {
-            let value = value?;
-            if let serde_json::Value::Object(map) = value {
-                for (k, v) in map {
-                    if fields.iter().any(|f| f.name == k) {
-                        continue;
-                    }
-                    fields.push(Field::new(k, json_type(&v)));
-                }
-            }
+    /// Read NDJSON from any `Read`. Used by the S3 source on a
+    /// `Cursor<&[u8]>` after `get_object`, and by tests.
+    pub fn scan_reader<R: BufRead>(
+        &self,
+        mut reader: R,
+        schema: Option<&Schema>,
+    ) -> Result<RecordBatch> {
+        // If the caller didn't pass a schema, read the full body into
+        // memory (NDJSON is small) and feed it twice — once for schema
+        // inference, once for records.
+        if schema.is_none() {
+            let mut buf = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut reader, &mut buf)
+                .map_err(|e| Error::Storage(format!("json read for schema: {e}")))?;
+            let schema = self.infer_schema_from_reader(BufReader::new(&buf[..]))?;
+            return self.scan_reader(BufReader::new(&buf[..]), Some(&schema));
         }
-        Ok(Schema::new(fields))
-    }
-
-    fn scan(&self, path: &str, schema: Option<&Schema>) -> Result<RecordBatch> {
-        let effective_schema = match schema {
-            Some(s) => s.clone(),
-            None => self.infer_schema(path)?,
-        };
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
+        let effective_schema = schema.unwrap().clone();
         let stream = serde_json::Deserializer::from_reader(reader).into_iter::<serde_json::Value>();
         let mut records = Vec::new();
         for value in stream {
@@ -73,6 +53,45 @@ impl DataSource for JsonSource {
             records.push(Record::new(row));
         }
         RecordBatch::from_records(effective_schema, records)
+    }
+
+    fn infer_schema_from_reader<R: BufRead>(&self, reader: R) -> Result<Schema> {
+        let stream = serde_json::Deserializer::from_reader(reader).into_iter::<serde_json::Value>();
+        let mut fields: Vec<Field> = Vec::new();
+        for value in stream {
+            let value = value?;
+            if let serde_json::Value::Object(map) = value {
+                for (k, v) in map {
+                    if fields.iter().any(|f| f.name == k) {
+                        continue;
+                    }
+                    fields.push(Field::new(k, json_type(&v)));
+                }
+            }
+        }
+        Ok(Schema::new(fields))
+    }
+}
+
+impl Default for JsonSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DataSource for JsonSource {
+    fn name(&self) -> &'static str {
+        "json"
+    }
+
+    fn infer_schema(&self, path: &str) -> Result<Schema> {
+        let file = File::open(path)?;
+        self.infer_schema_from_reader(BufReader::new(file))
+    }
+
+    fn scan(&self, path: &str, schema: Option<&Schema>) -> Result<RecordBatch> {
+        let file = File::open(path)?;
+        self.scan_reader(BufReader::new(file), schema)
     }
 }
 

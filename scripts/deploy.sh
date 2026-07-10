@@ -70,6 +70,19 @@ if [ -d "$ROOT/k8s/headlamp" ]; then
     fi
 fi
 
+# Best-effort: ensure MinIO + mc are in the cluster so
+# `./k8s/minio/apply.sh` works without a separate `docker pull` step.
+if [ -d "$ROOT/k8s/minio" ]; then
+    for img in minio/minio:latest minio/mc:latest; do
+        short="${img%%:*}"
+        if ! docker exec "k3d-${CLUSTER}-server-0" crictl images 2>/dev/null | grep -q "${short##*/}"; then
+            say "importing ${img} (best-effort)"
+            docker pull "$img" 2>/dev/null || true
+            k3d image import "$img" -c "$CLUSTER" 2>/dev/null || true
+        fi
+    done
+fi
+
 # Detect platform for cross-compile.
 ARCH="$(uname -m)"
 case "$ARCH" in
@@ -101,6 +114,10 @@ k3d image import "$OPERATOR_IMAGE" -c "$CLUSTER"
 say "applying manifests"
 kubectl apply -f k8s/
 kubectl apply -f k8s/operator/
+# MinIO is opt-in: only apply if the user has the manifests locally.
+if [ -d "$ROOT/k8s/minio" ]; then
+    kubectl apply -f k8s/minio/ 2>/dev/null || true
+fi
 
 say "triggering rolling updates"
 # rspark-cli runs as the master/worker image, so we restart its pods.

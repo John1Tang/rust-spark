@@ -4,6 +4,7 @@ use rspark_core::schema::{DataType, Field, Schema};
 use rspark_core::value::Value;
 use rspark_core::{Record, RecordBatch};
 use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 pub struct CsvSource;
@@ -12,24 +13,66 @@ impl CsvSource {
     pub fn new() -> Self {
         Self
     }
-}
 
-impl Default for CsvSource {
-    fn default() -> Self {
-        Self::new()
+    /// Read a CSV from any `BufRead`. Used by the S3 source against a
+    /// `BufReader<Cursor<&[u8]>>` after `get_object`, and by tests.
+    pub fn scan_reader<R: BufRead>(
+        &self,
+        mut reader: R,
+        schema: Option<&Schema>,
+    ) -> Result<RecordBatch> {
+        // If the caller didn't pass a schema, we have to read the file
+        // twice (once to infer, once to scan). The reader might not be
+        // seekable, so buffer into memory — CSVs are small.
+        let effective_schema = match schema {
+            Some(s) => s.clone(),
+            None => {
+                let mut buf = Vec::new();
+                let _ = std::io::Read::read_to_end(&mut reader, &mut buf)
+                    .map_err(|e| Error::Storage(format!("csv read for schema: {e}")))?;
+                let schema = self.infer_schema_from_reader(BufReader::new(&buf[..]))?;
+                let mut rdr = csv::ReaderBuilder::new()
+                    .has_headers(true)
+                    .from_reader(BufReader::new(&buf[..]));
+                let mut records = Vec::new();
+                for result in rdr.records() {
+                    let row = result.map_err(|e| {
+                        rspark_core::error::Error::from(rspark_core::error::CsvError::from(
+                            e.to_string(),
+                        ))
+                    })?;
+                    let values = row
+                        .iter()
+                        .zip(schema.fields().iter())
+                        .map(|(raw, field)| coerce_value(raw, &field.data_type))
+                        .collect();
+                    records.push(Record::new(values));
+                }
+                return RecordBatch::from_records(schema, records);
+            }
+        };
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(reader);
+        let mut records = Vec::new();
+        for result in rdr.records() {
+            let row = result.map_err(|e| {
+                rspark_core::error::Error::from(rspark_core::error::CsvError::from(e.to_string()))
+            })?;
+            let values = row
+                .iter()
+                .zip(effective_schema.fields().iter())
+                .map(|(raw, field)| coerce_value(raw, &field.data_type))
+                .collect();
+            records.push(Record::new(values));
+        }
+        RecordBatch::from_records(effective_schema, records)
     }
-}
 
-impl DataSource for CsvSource {
-    fn name(&self) -> &'static str {
-        "csv"
-    }
-
-    fn infer_schema(&self, path: &str) -> Result<Schema> {
-        let file = File::open(path)?;
+    fn infer_schema_from_reader<R: BufRead>(&self, reader: R) -> Result<Schema> {
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(true)
-            .from_reader(file);
+            .from_reader(reader);
         let headers = reader
             .headers()
             .map_err(|e| Error::Storage(format!("failed to read csv headers: {e}")))?
@@ -57,31 +100,27 @@ impl DataSource for CsvSource {
         }
         Ok(schema)
     }
+}
+
+impl Default for CsvSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DataSource for CsvSource {
+    fn name(&self) -> &'static str {
+        "csv"
+    }
+
+    fn infer_schema(&self, path: &str) -> Result<Schema> {
+        let file = File::open(path)?;
+        self.infer_schema_from_reader(BufReader::new(file))
+    }
 
     fn scan(&self, path: &str, schema: Option<&Schema>) -> Result<RecordBatch> {
-        let effective_schema = match schema {
-            Some(s) => s.clone(),
-            None => self.infer_schema(path)?,
-        };
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(path)
-            .map_err(|e| {
-                rspark_core::error::Error::from(rspark_core::error::CsvError::from(e.to_string()))
-            })?;
-        let mut records = Vec::new();
-        for result in rdr.records() {
-            let row = result.map_err(|e| {
-                rspark_core::error::Error::from(rspark_core::error::CsvError::from(e.to_string()))
-            })?;
-            let values = row
-                .iter()
-                .zip(effective_schema.fields().iter())
-                .map(|(raw, field)| coerce_value(raw, &field.data_type))
-                .collect();
-            records.push(Record::new(values));
-        }
-        RecordBatch::from_records(effective_schema, records)
+        let file = File::open(path)?;
+        self.scan_reader(BufReader::new(file), schema)
     }
 }
 

@@ -22,3 +22,5 @@ pub trait AsyncDataSource: Send + Sync {
     async fn infer_schema(&self, path: &str) -> Result<Schema>;
     async fn scan(&self, path: &str, schema: Option<&Schema>) -> Result<RecordBatch>;
 }
+
+pub type BoxedAsyncDataSource = Arc<dyn AsyncDataSource>;

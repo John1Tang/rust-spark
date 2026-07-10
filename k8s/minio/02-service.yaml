@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: rspark
+  labels:
+    app: minio
+spec:
+  # Headless because MinIO is single-replica; the in-cluster DNS name
+  # `minio.rspark.svc.cluster.local` resolves directly to the pod.
+  clusterIP: None
+  selector:
+    app: minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+    - name: console
+      port: 9001
+      targetPort: console
+---
+# Convenience for the user: a NodePort-style ClusterIP we can port-forward
+# to reach the MinIO console from a browser.
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-console
+  namespace: rspark
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: console
+      port: 9001
+      targetPort: console

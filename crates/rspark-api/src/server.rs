@@ -14,6 +14,9 @@ pub async fn run_server(
     catalog: Arc<SessionState>,
 ) -> std::io::Result<()> {
     let registry = Arc::new(SourceRegistry::with_defaults());
+    if let Ok(Some(src)) = rspark_storage::s3_source::try_register_s3(&registry).await {
+        tracing::info!(bucket=%src.config().bucket, "S3 source registered");
+    }
     let api_state = ApiState::new(master, catalog, registry);
     let app = build_router(api_state)
         .layer(CorsLayer::permissive())

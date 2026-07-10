@@ -9,10 +9,17 @@ use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 
 /// Minimal interactive SQL REPL. Reads statements terminated by `;` from stdin.
-pub fn start_repl(session: Arc<SessionState>) {
+/// The first part is async (S3 registration); the inner loop is sync because
+/// it reads from stdin.
+pub async fn start_repl(session: Arc<SessionState>) {
+    let registry = Arc::new(SourceRegistry::with_defaults());
+    let _ = rspark_storage::s3_source::try_register_s3(&registry).await;
+    start_repl_with_registry(session, registry).await;
+}
+
+async fn start_repl_with_registry(session: Arc<SessionState>, registry: Arc<SourceRegistry>) {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
-    let registry = Arc::new(SourceRegistry::with_defaults());
     let context = ExecutionContext::new(registry);
     let planner = Planner::new();
     let executor = LocalExecutor::new(&context);
