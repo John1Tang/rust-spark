@@ -1,0 +1,83 @@
+# StatefulSet for Kafka in KRaft mode (no ZooKeeper).
+#
+# Single-node cluster — fine for a learning project. The cluster ID
+# is hard-coded; the StatefulSet formats the data dir on first boot
+# via the combined controller+broker process.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: rspark
+  labels:
+    app: kafka
+    app.kubernetes.io/name: kafka
+spec:
+  replicas: 1
+  serviceName: kafka
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+        app.kubernetes.io/name: kafka
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: kafka
+          image: apache/kafka:3.9.0
+          imagePullPolicy: Never
+          env:
+            - name: CLUSTER_ID
+              value: "MkU3OEVBNTcwNTJENDM2Qk"
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+                echo "▸ formatting storage (cluster.id=$$CLUSTER_ID)"
+                /opt/kafka/bin/kafka-storage.sh format \
+                  --standalone \
+                  --cluster-id "$$CLUSTER_ID" \
+                  --config /etc/kafka-config/server.properties
+              fi
+              exec /opt/kafka/bin/kafka-server-start.sh \
+                /etc/kafka-config/server.properties
+          ports:
+            - name: kafka
+              containerPort: 9092
+            - name: controller
+              containerPort: 9093
+          readinessProbe:
+            tcpSocket:
+              port: kafka
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: kafka
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+            - name: config
+              mountPath: /etc/kafka-config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: kafka-server-properties
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

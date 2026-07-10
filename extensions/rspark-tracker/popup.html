@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>rspark-tracker</title>
+  <style>
+    body { font: 13px ui-monospace, monospace; padding: 12px; min-width: 280px; }
+    h1 { font-size: 14px; margin: 0 0 8px; }
+    label { display: block; margin: 6px 0 2px; color: #555; }
+    input { width: 100%; box-sizing: border-box; padding: 4px 6px; }
+    .row { display: flex; gap: 6px; margin-top: 8px; }
+    button { padding: 4px 10px; }
+    #status { color: #666; margin-top: 8px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <h1>rspark-tracker</h1>
+  <p style="margin:0 0 8px;color:#666;">Captures page_view / page_scroll / page_click and POSTs to the ingest backend.</p>
+  <label for="url">Ingest URL</label>
+  <input id="url" placeholder="http://127.0.0.1:8081/v1/events" />
+  <div class="row">
+    <button id="save">save</button>
+    <button id="flush">flush now</button>
+  </div>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

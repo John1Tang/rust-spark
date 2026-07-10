@@ -310,5 +310,8 @@ fn arrow_round_trip_preserves_rows_and_schema() {
     // Spot-check values.
     let row0 = back.records().first().unwrap();
     assert_eq!(row0.get(0), Some(&rspark_core::value::Value::Int64(1)));
-    assert_eq!(row0.get(1), Some(&rspark_core::value::Value::String("alice".into())));
+    assert_eq!(
+        row0.get(1),
+        Some(&rspark_core::value::Value::String("alice".into()))
+    );
 }

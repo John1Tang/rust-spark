@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: rspark
+spec:
+  type: ClusterIP
+  selector:
+    app: kafka
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: kafka
+    - name: controller
+      port: 9093
+      targetPort: controller

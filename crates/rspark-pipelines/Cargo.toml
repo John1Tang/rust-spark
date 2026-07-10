@@ -1,24 +1,33 @@
 [package]
-name = "rspark-api"
+name = "rspark-pipelines"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+name = "rspark_pipelines"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rspark-pipeline"
+path = "src/bin/rspark_pipeline.rs"
+
 [dependencies]
 rspark-core = { path = "../rspark-core" }
 rspark-sql = { path = "../rspark-sql" }
-rspark-cluster = { path = "../rspark-cluster" }
 rspark-exec = { path = "../rspark-exec" }
 rspark-storage = { path = "../rspark-storage" }
-rspark-pipelines = { path = "../rspark-pipelines" }
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
 thiserror.workspace = true
-axum.workspace = true
-tower.workspace = true
-tower-http.workspace = true
+anyhow.workspace = true
 tokio.workspace = true
 async-trait.workspace = true
-reqwest.workspace = true
-chrono.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
+petgraph.workspace = true
+rdkafka.workspace = true
+chrono.workspace = true
+clap.workspace = true
+humantime.workspace = true

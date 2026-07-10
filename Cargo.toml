@@ -10,6 +10,8 @@ members = [
     "crates/rspark-dashboard",
     "crates/rspark-cli",
     "crates/rspark-operator",
+    "crates/rspark-pipelines",
+    "crates/rspark-ingest",
 ]
 
 [workspace.package]
@@ -51,6 +53,9 @@ futures = "0.3"
 parking_lot = "0.12"
 async-trait = "0.1"
 humantime = "2"
+serde_yaml = "0.9"
+petgraph = "0.6"
+rdkafka = { version = "0.36", default-features = false, features = ["tokio", "dynamic-linking"] }
 
 [profile.release]
 lto = "thin"

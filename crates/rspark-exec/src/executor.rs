@@ -153,6 +153,24 @@ impl<'a> LocalExecutor<'a> {
         Ok(current_batch)
     }
 
+    /// Like [`execute`] but seeds `current_batch` from a caller-supplied
+    /// batch. The first `Scan` in the plan will be skipped — useful for
+    /// streaming-table flows where the polled rows come from Kafka and
+    /// shouldn't be re-read from a file.
+    pub fn execute_with_input(
+        &self,
+        plan: &LogicalPlan,
+        input: RecordBatch,
+    ) -> Result<RecordBatch> {
+        let mut current_batch = self.materialize_input(plan).unwrap_or(input.clone());
+        if current_batch.is_empty() && !input.is_empty() {
+            current_batch = input;
+        }
+        let mut current_op = lower_plan(plan);
+        apply_tree(plan, &mut current_batch, &mut current_op, self.context)?;
+        Ok(current_batch)
+    }
+
     fn materialize_input(&self, plan: &LogicalPlan) -> Result<RecordBatch> {
         match plan {
             LogicalPlan::Scan {

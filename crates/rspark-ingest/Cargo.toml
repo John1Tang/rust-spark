@@ -1,0 +1,27 @@
+[package]
+name = "rspark-ingest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "rspark_ingest"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rspark-ingest"
+path = "src/main.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true
+rdkafka.workspace = true

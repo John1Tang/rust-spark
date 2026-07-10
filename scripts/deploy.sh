@@ -83,6 +83,16 @@ if [ -d "$ROOT/k8s/minio" ]; then
     done
 fi
 
+# Best-effort: ensure the Kafka image is in the cluster so
+# `./k8s/kafka/apply.sh` works without a separate `docker pull` step.
+if [ -d "$ROOT/k8s/kafka" ]; then
+    if ! docker exec "k3d-${CLUSTER}-server-0" crictl images 2>/dev/null | grep -q "apache/kafka"; then
+        say "importing apache/kafka:3.9.0 (best-effort)"
+        docker pull apache/kafka:3.9.0 2>/dev/null || true
+        k3d image import apache/kafka:3.9.0 -c "$CLUSTER" 2>/dev/null || true
+    fi
+fi
+
 # Detect platform for cross-compile.
 ARCH="$(uname -m)"
 case "$ARCH" in
@@ -117,6 +127,10 @@ kubectl apply -f k8s/operator/
 # MinIO is opt-in: only apply if the user has the manifests locally.
 if [ -d "$ROOT/k8s/minio" ]; then
     kubectl apply -f k8s/minio/ 2>/dev/null || true
+fi
+# Kafka is opt-in: only apply if the user has the manifests locally.
+if [ -d "$ROOT/k8s/kafka" ]; then
+    kubectl apply -f k8s/kafka/ 2>/dev/null || true
 fi
 
 say "triggering rolling updates"

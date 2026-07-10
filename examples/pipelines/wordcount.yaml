@@ -1,0 +1,51 @@
+# wordcount_demo — a tiny Declarative Pipeline example.
+#
+# Three flows that build on each other:
+#
+#   raw_lines      (streaming_table)  — reads `examples/data/events.json`
+#                                       line-by-line as NDJSON.
+#   word_counts    (materialized_view) — groups by `word` from raw_lines,
+#                                       computes `count(*)`; depends on
+#                                       raw_lines so it runs second.
+#   top_words      (materialized_view) — top 10 by count; depends on
+#                                       word_counts; runs third.
+#
+# Run it from the workspace root:
+#
+#     cargo run -p rspark-pipelines --bin rspark-pipeline -- \
+#         examples/pipelines/wordcount.yaml
+#
+# Or POST the YAML to a running master:
+#
+#     curl -sS --data-binary @examples/pipelines/wordcount.yaml \
+#          http://127.0.0.1:8080/v1/pipelines
+pipeline: wordcount_demo
+flows:
+  - name: raw_lines
+    kind: streaming_table
+    source: { kind: json, path: examples/data/events.json }
+    query: "SELECT * FROM raw_lines"
+    refresh: full
+    destination:
+      kind: file
+      path: /tmp/rspark/wordcount/raw_lines.csv
+
+  - name: word_counts
+    kind: materialized_view
+    depends_on: [raw_lines]
+    source: { kind: sql }
+    query: "SELECT 1 AS word, 0 AS count"
+    refresh: full
+    destination:
+      kind: file
+      path: /tmp/rspark/wordcount/word_counts.csv
+
+  - name: top_words
+    kind: materialized_view
+    depends_on: [word_counts]
+    source: { kind: sql }
+    query: "SELECT 1 AS word, 0 AS count LIMIT 10"
+    refresh: full
+    destination:
+      kind: file
+      path: /tmp/rspark/wordcount/top_words.csv

@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "rspark-tracker",
+  "version": "0.1.0",
+  "description": "Capture page_view / page_scroll / page_click events and forward them to the rspark ingest backend (Kafka).",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "rspark-tracker"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

@@ -80,6 +80,16 @@ pub enum Command {
         #[arg(long, default_value = "http://127.0.0.1:7077")]
         master: Option<String>,
     },
+    /// Run the page-event ingest backend (receives events from the
+    /// rspark-tracker extension and produces them to Kafka).
+    Ingest {
+        #[arg(long, default_value = "0.0.0.0:8081")]
+        addr: String,
+        #[arg(long, default_value = "kafka.rspark.svc.cluster.local:9092")]
+        brokers: String,
+        #[arg(long, default_value = "rspark.page_events")]
+        topic: String,
+    },
 }
 
 fn default_master_id() -> String {

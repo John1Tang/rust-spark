@@ -12,6 +12,8 @@ rspark-storage = { path = "../rspark-storage" }
 rspark-cluster = { path = "../rspark-cluster" }
 rspark-api = { path = "../rspark-api" }
 rspark-dashboard = { path = "../rspark-dashboard" }
+rspark-pipelines = { path = "../rspark-pipelines" }
+rspark-ingest = { path = "../rspark-ingest" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

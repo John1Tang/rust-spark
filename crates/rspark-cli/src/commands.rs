@@ -51,7 +51,21 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
             input,
         } => run_shell(input_format, input).await,
         Command::Dashboard { addr, master } => run_dashboard(addr, master).await,
+        Command::Ingest {
+            addr,
+            brokers,
+            topic,
+        } => run_ingest(addr, brokers, topic).await,
     }
+}
+
+async fn run_ingest(addr: String, brokers: String, topic: String) -> Result<()> {
+    std::env::set_var("RSPORT_INGEST", &addr);
+    std::env::set_var("KAFKA_BROKERS", &brokers);
+    std::env::set_var("KAFKA_TOPIC", &topic);
+    rspark_ingest::run()
+        .await
+        .map_err(|e| rspark_core::error::Error::Cluster(format!("ingest: {e}")))
 }
 
 async fn run_master(

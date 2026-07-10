@@ -1,0 +1,70 @@
+# End-to-end demo: page events from Kafka joined to a batch catalog
+# and to a derived streaming view.
+#
+#   page_events     (streaming_table)  consumes rspark.page_events
+#   clicks_with_label
+#                    (materialized_view)  joins page_events click rows to
+#                                         the batch `tag_catalog` table
+#   clicks_by_session
+#                    (materialized_view)  joins page_events clicks to
+#                                         page_events views on url+sid
+#
+# Run:
+#   ./k8s/kafka/apply.sh                          # Kafka cluster up
+#   kubectl -n rspark apply -f k8s/ingest/        # ingest service
+#   # (pipeline can run via the API; see docs/kafka.md and docs/pipelines.md)
+#   curl -sS --data-binary @examples/e2e/page_events_pipeline.yaml \
+#        http://127.0.0.1:8080/v1/pipelines
+pipeline: page_events_demo
+flows:
+  - name: page_events
+    kind: streaming_table
+    source:
+      kind: kafka
+      topic: rspark.page_events
+      brokers: kafka.rspark.svc.cluster.local:9092
+      group_id: rspark-page-events
+    # Filter to clicks only — we don't actually filter in SQL today,
+    # so the streaming table holds every event. Downstream views
+    # filter.
+    query: "SELECT 1 AS one"
+    refresh: full
+    destination:
+      kind: file
+      path: /tmp/rspark/page_events/page_events.csv
+
+  - name: clicks_with_label
+    kind: materialized_view
+    depends_on: [page_events]
+    source: { kind: sql }
+    query: |
+      SELECT p.type, p.tag, p.url, c.label, c.category
+      FROM page_events p
+      JOIN tag_catalog c ON p.tag = c.tag
+    refresh: full
+    destination:
+      kind: file
+      path: /tmp/rspark/page_events/clicks_with_label.csv
+
+  - name: clicks_by_session
+    kind: materialized_view
+    depends_on: [page_events]
+    source: { kind: sql }
+    # Two streaming-table joins on (url) is a degenerate case (every
+    # view matches every click for that URL), so this is the second
+    # streaming-table join demo. A more realistic stream-stream join
+    # would use a session id parsed from a query param; we keep it
+    # simple by joining on url.
+    query: |
+      SELECT v.url, v.title, COUNT(c.tag) AS clicks
+      FROM page_events v
+      JOIN page_events c
+        ON v.url = c.url
+       AND v.type = 'page_view'
+       AND c.type = 'page_click'
+      GROUP BY v.url, v.title
+      ORDER BY clicks DESC
+    refresh: full
+    destination:
+      kind: file
+      path: /tmp/rspark/page_events/clicks_by_session.csv

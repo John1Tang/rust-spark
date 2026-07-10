@@ -473,6 +473,7 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
     <nav class="tabs" id="tabs">
       <button data-tab="sql-lab" class="active">SQL Lab</button>
       <button data-tab="cluster">Cluster <span class="badge" id="badge-running" style="display:none;">0</span></button>
+      <button data-tab="pipelines">Pipelines <span class="badge" id="badge-pipelines" style="display:none;">0</span></button>
     </nav>
     <div class="layout" id="layout-sql-lab">
       <aside class="sidebar">
@@ -576,6 +577,26 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
         </section>
       </main>
     </div>
+    <div class="layout" id="layout-pipelines" style="display:none;grid-template-columns: 320px 1fr;">
+      <aside class="sidebar">
+        <section>
+          <h2>Pipelines</h2>
+          <ul class="table-list" id="pipelines-list"></ul>
+          <div class="add-table">
+            <h3 style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.04em;margin:8px 0 4px;">Submit YAML</h3>
+            <textarea id="pipeline-yaml" spellcheck="false" placeholder="pipeline: my_pipe&#10;flows:&#10;  - name: a&#10;    kind: materialized_view&#10;    source: { kind: sql }&#10;    query: 'SELECT 1'&#10;    destination: { kind: file, path: /tmp/a.csv }" style="min-height:140px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;"></textarea>
+            <button id="submit-pipeline-btn" style="margin-top:6px;">run pipeline</button>
+            <div id="pipeline-status" style="font-size:11px;color:var(--text-dim);margin-top:6px;"></div>
+          </div>
+        </section>
+      </aside>
+      <main>
+        <section>
+          <h2>DAG <span id="dag-name" style="color:var(--text-dim);font-weight:400;"></span></h2>
+          <svg id="dag-svg" width="100%" height="500" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;"></svg>
+        </section>
+      </main>
+    </div>
     <div class="footer">
       rspark — a small Spark-compatible engine in Rust.
     </div>
@@ -664,6 +685,8 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
         });
         document.getElementById("layout-sql-lab").style.display = name === "sql-lab" ? "grid" : "none";
         document.getElementById("layout-cluster").style.display = name === "cluster" ? "grid" : "none";
+        document.getElementById("layout-pipelines").style.display = name === "pipelines" ? "grid" : "none";
+        if (name === "pipelines") refreshPipelines();
       }
       document.querySelectorAll("nav.tabs button").forEach(b => {
         b.addEventListener("click", () => setTab(b.dataset.tab));
@@ -1260,6 +1283,167 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
       setInterval(refresh, 1500);
       setInterval(refreshTables, 5000);
       setInterval(refreshSuggestions, 5000);
+      setInterval(refreshPipelines, 5000);
+
+      // --- Pipelines tab ---
+      // Hand-rolled layered DAG renderer. Given the layer structure
+      // returned by `GET /v1/pipelines/:name/dag`, layout each layer
+      // vertically and draw boxes connected by arrows. Barycenter
+      // ordering reduces edge crossings without needing dagre/d3.
+      const PipelinesState = { selected: null };
+
+      async function refreshPipelines() {
+        const ul = document.getElementById("pipelines-list");
+        const badge = document.getElementById("badge-pipelines");
+        let items = [];
+        try {
+          const r = await fetch("/v1/pipelines");
+          if (!r.ok) return;
+          items = await r.json();
+        } catch (e) { return; }
+        const count = items.length;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? "inline-block" : "none";
+        if (count === 0) {
+          ul.innerHTML = '<li style="color:var(--text-dim);padding:8px;font-size:11px;">no pipelines yet — submit one →</li>';
+          document.getElementById("dag-svg").innerHTML = "";
+          document.getElementById("dag-name").textContent = "";
+          return;
+        }
+        ul.innerHTML = items.map(p => {
+          const sel = PipelinesState.selected === p.name ? ' style="background:var(--bg-elev);"' : '';
+          return `<li${sel} class="clickable" data-pipe="${escapeHtml(p.name)}">${escapeHtml(p.name)} <span style="color:var(--text-dim);font-size:10px;">${p.flows.length}f</span></li>`;
+        }).join("");
+        ul.querySelectorAll("li.clickable").forEach(li => {
+          li.addEventListener("click", () => {
+            PipelinesState.selected = li.dataset.pipe;
+            renderDag(PipelinesState.selected);
+            refreshPipelines();
+          });
+        });
+        if (!PipelinesState.selected && items.length > 0) {
+          PipelinesState.selected = items[0].name;
+          renderDag(PipelinesState.selected);
+          ul.querySelectorAll("li.clickable").forEach(li => {
+            if (li.dataset.pipe === PipelinesState.selected) li.style.background = "var(--bg-elev)";
+          });
+        }
+      }
+
+      async function renderDag(name) {
+        const svg = document.getElementById("dag-svg");
+        const title = document.getElementById("dag-name");
+        title.textContent = name;
+        let dag;
+        try {
+          const r = await fetch("/v1/pipelines/" + encodeURIComponent(name) + "/dag");
+          if (!r.ok) {
+            svg.innerHTML = `<text x="20" y="30" fill="var(--danger)">dag fetch failed (${r.status})</text>`;
+            return;
+          }
+          dag = await r.json();
+        } catch (e) {
+          svg.innerHTML = `<text x="20" y="30" fill="var(--danger)">network error</text>`;
+          return;
+        }
+        const kinds = {};
+        (dag.flows || []).forEach(f => { kinds[f.name] = f.kind; });
+        const layers = dag.layers || [];
+        if (layers.length === 0) {
+          svg.innerHTML = '<text x="20" y="30" fill="var(--text-dim)">empty pipeline</text>';
+          return;
+        }
+        // Barycenter ordering: for each node, compute the average
+        // index of its predecessors in the previous layer. Iterating
+        // top-down keeps edges short.
+        const positions = {};
+        const ySpacing = 100;
+        const xSpacing = 180;
+        const layerY = (i) => 60 + i * ySpacing;
+        for (let i = 0; i < layers.length; i++) {
+          if (i === 0) {
+            layers[i].forEach((n, j) => { positions[n] = { x: 40 + j * xSpacing, y: layerY(i) }; });
+            continue;
+          }
+          const prevLayer = layers[i - 1];
+          const prevX = new Map(prevLayer.map((n, j) => [n, j]));
+          const sorted = layers[i].slice().sort((a, b) => {
+            const pa = (dag.flows || []).find(f => f.name === a)?.depends_on || [];
+            const pb = (dag.flows || []).find(f => f.name === b)?.depends_on || [];
+            const avgA = pa.length ? pa.reduce((s, p) => s + (prevX.get(p) ?? 0), 0) / pa.length : 0;
+            const avgB = pb.length ? pb.reduce((s, p) => s + (prevX.get(p) ?? 0), 0) / pb.length : 0;
+            return avgA - avgB;
+          });
+          sorted.forEach((n, j) => { positions[n] = { x: 40 + j * xSpacing, y: layerY(i) }; });
+        }
+        // Build SVG
+        const w = Math.max(640, 40 + Math.max(...layers.map(l => l.length)) * xSpacing + 40);
+        const h = 60 + layers.length * ySpacing + 40;
+        svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+        svg.innerHTML = "";
+        // Edges first
+        (dag.flows || []).forEach(f => {
+          (f.depends_on || []).forEach(dep => {
+            const a = positions[dep];
+            const b = positions[f.name];
+            if (!a || !b) return;
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const mx = (a.x + b.x) / 2;
+            path.setAttribute("d", `M ${a.x + 70} ${a.y + 35} C ${mx} ${a.y + 35}, ${mx} ${b.y + 35}, ${b.x + 70} ${b.y}`);
+            path.setAttribute("stroke", "var(--accent)");
+            path.setAttribute("stroke-width", "1.5");
+            path.setAttribute("fill", "none");
+            path.setAttribute("marker-end", "url(#arrowhead)");
+            svg.appendChild(path);
+          });
+        });
+        // Arrowhead marker
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+        defs.innerHTML = `<marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker>`;
+        svg.appendChild(defs);
+        // Nodes
+        (dag.flows || []).forEach(f => {
+          const pos = positions[f.name];
+          if (!pos) return;
+          const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          const stripeColor = f.kind === "streaming_table" ? "var(--accent)" : "var(--success)";
+          g.innerHTML = `
+            <rect x="${pos.x}" y="${pos.y}" width="140" height="70" rx="4" fill="var(--bg-elev)" stroke="var(--border)" stroke-width="1"/>
+            <rect x="${pos.x}" y="${pos.y}" width="6" height="70" fill="${stripeColor}"/>
+            <text x="${pos.x + 14}" y="${pos.y + 24}" fill="var(--text)" font-size="13" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">${escapeHtml(f.name)}</text>
+            <text x="${pos.x + 14}" y="${pos.y + 44}" fill="var(--text-dim)" font-size="10">${escapeHtml(f.kind)}</text>
+            <text x="${pos.x + 14}" y="${pos.y + 60}" fill="var(--text-dim)" font-size="9">deps: ${escapeHtml((f.depends_on || []).join(", ") || "—")}</text>
+          `;
+          svg.appendChild(g);
+        });
+      }
+
+      document.getElementById("submit-pipeline-btn").addEventListener("click", async () => {
+        const ta = document.getElementById("pipeline-yaml");
+        const status = document.getElementById("pipeline-status");
+        const yaml = ta.value.trim();
+        if (!yaml) { status.textContent = "paste a spec first"; return; }
+        status.textContent = "running…";
+        try {
+          const r = await fetch("/v1/pipelines", {
+            method: "POST",
+            headers: { "content-type": "text/plain" },
+            body: yaml,
+          });
+          if (!r.ok) {
+            const err = await r.text();
+            status.textContent = "failed: " + err.slice(0, 200);
+            return;
+          }
+          const body = await r.json();
+          const flowStats = (body.report && body.report.flows) || [];
+          const total = flowStats.reduce((s, f) => s + (f.row_count || 0), 0);
+          status.textContent = `ran ${flowStats.length} flow(s), ${total} row(s) written`;
+          refreshPipelines();
+        } catch (e) {
+          status.textContent = "network error: " + e;
+        }
+      });
     </script>
   </body>
 </html>

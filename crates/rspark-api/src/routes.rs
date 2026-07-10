@@ -17,11 +17,48 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 
+// ----- Pipelines -----
+//
+// The API keeps an in-memory map of named pipeline specs (loaded by
+// `POST /v1/pipelines`). They are not persisted across master restarts
+// — that's a future job for the Pipeline CRD + operator. For now this
+// is enough to power the dashboard's DAG tab and the demo `curl`
+// workflows in `docs/pipelines.md`.
+
+#[derive(Clone, Default)]
+pub struct PipelineRegistry {
+    inner: std::sync::Arc<
+        std::sync::RwLock<std::collections::HashMap<String, rspark_pipelines::Pipeline>>,
+    >,
+}
+
+impl PipelineRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn insert(&self, p: rspark_pipelines::Pipeline) {
+        let mut g = self.inner.write().expect("pipeline registry lock poisoned");
+        g.insert(p.pipeline.clone(), p);
+    }
+    pub fn list(&self) -> Vec<rspark_pipelines::Pipeline> {
+        let g = self.inner.read().expect("pipeline registry lock poisoned");
+        g.values().cloned().collect()
+    }
+    pub fn get(&self, name: &str) -> Option<rspark_pipelines::Pipeline> {
+        self.inner
+            .read()
+            .expect("pipeline registry lock poisoned")
+            .get(name)
+            .cloned()
+    }
+}
+
 #[derive(Clone)]
 pub struct ApiState {
     pub master: Arc<Master>,
     pub catalog: Arc<SessionState>,
     pub source_registry: Arc<SourceRegistry>,
+    pub pipelines: PipelineRegistry,
 }
 
 impl ApiState {
@@ -34,7 +71,13 @@ impl ApiState {
             master,
             catalog,
             source_registry,
+            pipelines: PipelineRegistry::new(),
         }
+    }
+
+    pub fn with_pipelines(mut self, pipelines: PipelineRegistry) -> Self {
+        self.pipelines = pipelines;
+        self
     }
 }
 
@@ -58,6 +101,9 @@ pub fn build_router(state: ApiState) -> Router {
             axum::routing::delete(unregister_table),
         )
         .route("/v1/catalog/suggestions", get(suggestions))
+        .route("/v1/pipelines", post(submit_pipeline))
+        .route("/v1/pipelines", get(list_pipelines))
+        .route("/v1/pipelines/:name/dag", get(pipeline_dag))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -516,6 +562,107 @@ fn err_response(err: Error) -> axum::response::Response {
     (StatusCode::INTERNAL_SERVER_ERROR, Json(body)).into_response()
 }
 
+async fn submit_pipeline(State(state): State<ApiState>, body: String) -> axum::response::Response {
+    let pipeline = match rspark_pipelines::Pipeline::from_yaml(&body) {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": e.to_string(), "kind": "spec_error"})),
+            )
+                .into_response();
+        }
+    };
+    let name = pipeline.pipeline.clone();
+    state.pipelines.insert(pipeline.clone());
+    let registry = state.source_registry.clone();
+    let catalog = state.catalog.clone();
+    let report = match run_pipeline_now(&pipeline, registry, catalog).await {
+        Ok(r) => r,
+        Err(e) => return err_response(e),
+    };
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "name": name,
+            "flows": pipeline.flows.iter().map(|f| f.name.clone()).collect::<Vec<_>>(),
+            "report": report,
+        })),
+    )
+        .into_response()
+}
+
+async fn list_pipelines(State(state): State<ApiState>) -> impl IntoResponse {
+    let items: Vec<_> = state
+        .pipelines
+        .list()
+        .into_iter()
+        .map(|p| {
+            serde_json::json!({
+                "name": p.pipeline,
+                "flows": p.flows.iter().map(|f| f.name.clone()).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    Json(items)
+}
+
+async fn pipeline_dag(
+    State(state): State<ApiState>,
+    Path(name): Path<String>,
+) -> axum::response::Response {
+    let Some(pipeline) = state.pipelines.get(&name) else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": format!("pipeline '{name}' not found")})),
+        )
+            .into_response();
+    };
+    match rspark_pipelines::PipelineDag::from_pipeline(&pipeline) {
+        Ok(dag) => {
+            let layers: Vec<Vec<String>> = dag
+                .layers()
+                .into_iter()
+                .map(|layer| {
+                    layer
+                        .into_iter()
+                        .filter_map(|fid| dag.flow(fid).map(|s| s.to_string()))
+                        .collect()
+                })
+                .collect();
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "name": pipeline.pipeline,
+                    "layers": layers,
+                    "flows": pipeline.flows.iter().map(|f| {
+                        serde_json::json!({
+                            "name": f.name,
+                            "kind": f.kind,
+                            "depends_on": f.depends_on,
+                        })
+                    }).collect::<Vec<_>>(),
+                })),
+            )
+                .into_response()
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": e.to_string(), "kind": "spec_error"})),
+        )
+            .into_response(),
+    }
+}
+
+async fn run_pipeline_now(
+    pipeline: &rspark_pipelines::Pipeline,
+    registry: Arc<SourceRegistry>,
+    catalog: Arc<SessionState>,
+) -> rspark_core::error::Result<rspark_pipelines::PipelineRunReport> {
+    let runner = rspark_pipelines::PipelineRunner::new(registry, catalog);
+    runner.run(pipeline).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -591,7 +738,7 @@ mod tests {
             Field::new("id", DataType::Int64),
             Field::new("name", DataType::String),
         ]);
-        let mut catalog = SessionState::new();
+        let catalog = SessionState::new();
         catalog
             .register("employees", "/data/employees.csv", "csv", schema)
             .unwrap();
@@ -605,5 +752,63 @@ mod tests {
         assert!(sugg.columns.contains(&"name".to_string()));
         assert!(sugg.functions.contains(&"COUNT".to_string()));
         assert!(sugg.keywords.contains(&"SELECT".to_string()));
+    }
+
+    #[tokio::test]
+    async fn pipelines_list_endpoint_returns_empty_initially() {
+        let state = ClusterState::new("test-master");
+        let master = Arc::new(Master::new(state));
+        let catalog = Arc::new(SessionState::new());
+        let registry = Arc::new(SourceRegistry::with_defaults());
+        let api_state = ApiState::new(master, catalog, registry);
+        let app = build_router(api_state);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(format!("http://{addr}/v1/pipelines"))
+            .send()
+            .await
+            .unwrap();
+        assert!(resp.status().is_success());
+        let body: serde_json::Value = resp.json().await.unwrap();
+        assert!(body.as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn pipelines_dag_returns_404_for_unknown() {
+        let state = ClusterState::new("test-master");
+        let master = Arc::new(Master::new(state));
+        let catalog = Arc::new(SessionState::new());
+        let registry = Arc::new(SourceRegistry::with_defaults());
+        let api_state = ApiState::new(master, catalog, registry);
+        let app = build_router(api_state);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(format!("http://{addr}/v1/pipelines/missing/dag"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), axum::http::StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn pipelines_registry_insert_and_get_round_trip() {
+        let reg = PipelineRegistry::new();
+        let yaml = "pipeline: p1\nflows:\n  - name: a\n    kind: materialized_view\n    source: { kind: sql }\n    query: \"SELECT 1\"\n    destination: { kind: file, path: /tmp/a }\n";
+        let p = rspark_pipelines::Pipeline::from_yaml(yaml).unwrap();
+        reg.insert(p.clone());
+        let got = reg.get("p1").unwrap();
+        assert_eq!(got.pipeline, "p1");
+        assert_eq!(got.flows.len(), 1);
+        assert_eq!(reg.list().len(), 1);
     }
 }
