@@ -8,6 +8,7 @@ use crate::plan::{
     build_aggregate_schema, build_join_schema, build_project_schema, build_scan_schema, JoinType,
     LogicalPlan, SortExpr,
 };
+use crate::table_kind::TableKind;
 
 #[derive(Debug, Clone, Default)]
 pub struct Planner;
@@ -316,6 +317,38 @@ pub trait Catalog: Send + Sync {
         source: &str,
         schema: Schema,
     ) -> Result<()>;
+
+    /// Default implementation returns `Batch` for every entry. Catalogs
+    /// that track streaming tables / materialised views should override
+    /// to return the recorded kind.
+    fn table_kind(&self, name: &str) -> Result<TableKind> {
+        let _ = self.table_schema(name)?;
+        Ok(TableKind::Batch)
+    }
+
+    /// Default implementation returns `(name, Batch)` for every entry.
+    fn list_tables_with_kind(&self) -> Result<Vec<(String, TableKind)>> {
+        self.list_tables()
+            .map(|names| names.into_iter().map(|n| (n, TableKind::Batch)).collect())
+    }
+
+    /// Default: register a batch table. Implementations that distinguish
+    /// kinds (e.g. [`crate::SessionState`]) override to route by kind.
+    /// Takes `&self` because the canonical implementation is an internal
+    /// `RwLock` — registration through a shared reference is safe.
+    fn register_with_kind(
+        &self,
+        _name: &str,
+        _path: &str,
+        _source: &str,
+        _schema: Schema,
+        kind: TableKind,
+    ) -> Result<()> {
+        let _ = kind;
+        Err(Error::InvalidState(
+            "catalog does not support register_with_kind".into(),
+        ))
+    }
 }
 
 #[cfg(test)]

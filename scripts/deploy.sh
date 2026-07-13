@@ -54,7 +54,16 @@ if ! nc -z 127.0.0.1 8888 2>/dev/null; then
 fi
 
 say "building $IMAGE (master + worker)"
-docker build -f docker/Dockerfile -t "$IMAGE" .
+# Pass proxy env as empty build args so BuildKit's apt + cargo steps skip
+# the Docker daemon's httpProxy when that proxy is unreachable (we hit
+# this on networks where the corporate proxy blocks deb.debian.org and
+# crates.io, but the VPN tunnel already bypasses it on the host).
+docker build \
+    --build-arg http_proxy= \
+    --build-arg https_proxy= \
+    --build-arg HTTP_PROXY= \
+    --build-arg HTTPS_PROXY= \
+    -f docker/Dockerfile -t "$IMAGE" .
 
 say "importing $IMAGE into k3d cluster '$CLUSTER'"
 k3d image import "$IMAGE" -c "$CLUSTER"
@@ -96,29 +105,34 @@ fi
 # Detect platform for cross-compile.
 ARCH="$(uname -m)"
 case "$ARCH" in
-    arm64|aarch64)  LINUX_TARGET="aarch64-unknown-linux-musl" ;;
-    x86_64)         LINUX_TARGET="x86_64-unknown-linux-musl"  ;;
+    arm64|aarch64)  LINUX_TARGET="aarch64-unknown-linux-musl"; LINUX_GCC="aarch64-linux-musl-gcc" ;;
+    x86_64)         LINUX_TARGET="x86_64-unknown-linux-musl";  LINUX_GCC="x86_64-linux-musl-gcc" ;;
     *)              die "unsupported arch: $ARCH" ;;
 esac
 
-if [ -d "/opt/homebrew/Cellar/musl-cross" ] || command -v "musl-gcc" >/dev/null 2>&1; then
-    CC="${LINUX_TARGET}-gcc" \
-    CARGO_TARGET_$(echo "$LINUX_TARGET" | tr 'a-z-' 'A-Z_')_LINKER="${LINUX_TARGET}-gcc" \
-    cargo build --release -p rspark-operator --target "$LINUX_TARGET"
-    OPERATOR_BIN="target/${LINUX_TARGET}/release/rspark-operator"
+# musl-cross installs as <arch>-linux-musl-gcc, not the rust target triple.
+# BuildKit-less: build the operator binary directly for the linux/musl
+# target so the resulting image is portable across architectures.
+if command -v "$LINUX_GCC" >/dev/null 2>&1; then
+    LINKER_VAR="CARGO_TARGET_$(echo "$LINUX_TARGET" | tr 'a-z-' 'A-Z_')_LINKER"
+    env CC="$LINUX_GCC" "$LINKER_VAR"="$LINUX_GCC" \
+        cargo build --profile release-fast -p rspark-operator --target "$LINUX_TARGET"
+    OPERATOR_BIN="target/${LINUX_TARGET}/release-fast/rspark-operator"
 else
-    say "  (no musl-gcc found, falling back to host-native build)"
-    cargo build --release -p rspark-operator
-    OPERATOR_BIN="target/release/rspark-operator"
+    say "  (no $LINUX_GCC found, falling back to host-native build)"
+    cargo build --profile release-fast -p rspark-operator
+    OPERATOR_BIN="target/release-fast/rspark-operator"
 fi
 
 say "building $OPERATOR_IMAGE from $OPERATOR_BIN"
-cat > /tmp/rspark-operator.Dockerfile <<EOF
+TMPDIR_FOR_BUILD="${TMPDIR:-/tmp}"
+TMPDIR_FOR_BUILD=$(echo "$TMPDIR_FOR_BUILD" | sed 's:/private::')
+cat > "$TMPDIR_FOR_BUILD/rspark-operator.Dockerfile" <<EOF
 FROM ubuntu/squid
 COPY $OPERATOR_BIN /usr/local/bin/rspark-operator
 ENTRYPOINT ["/usr/local/bin/rspark-operator"]
 EOF
-docker build -f /tmp/rspark-operator.Dockerfile -t "$OPERATOR_IMAGE" .
+docker build -f "$TMPDIR_FOR_BUILD/rspark-operator.Dockerfile" -t "$OPERATOR_IMAGE" .
 k3d image import "$OPERATOR_IMAGE" -c "$CLUSTER"
 
 say "applying manifests"

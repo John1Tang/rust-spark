@@ -37,11 +37,14 @@ CI runs `cargo fmt --check`, `cargo clippy --workspace --lib --bins -- -D warnin
 `scripts/deploy.sh` is the loop you run after every change:
 
 ```bash
-./scripts/deploy.sh        # build rspark:latest, k3d image import, kubectl rollout restart
-./scripts/port-forward.sh  # dashboard at http://127.0.0.1:8080, API at :7077
-./scripts/sql.sh "..."     # curl wrapper around /v1/sql
-./scripts/cluster-up.sh    # idempotent: create the k3d cluster if missing
+./scripts/deploy.sh             # build rspark:latest, k3d image import, kubectl rollout restart
+./scripts/port-forward.sh       # dashboard at http://127.0.0.1:8088, API at :7077
+./scripts/sql.sh "..."          # curl wrapper around /v1/sql
+./scripts/cluster-up.sh         # idempotent: create the k3d cluster if missing
+./scripts/seed-mock-data.sh     # idempotent: upload fixtures to MinIO, register batch tables in the catalog, run the clickstream pipeline so `click_events` is `kind: streaming_table`
 ```
+
+`scripts/port-forward.sh` forwards `8088:8080` (not `8080:8080`) because Docker Desktop's IPv6 listener on `[::1]:8080` would otherwise intercept browser requests and return 404. The k3d cluster itself still publishes port 8080 on the dashboard Service; only the host-side port-forward has moved.
 
 `deploy.sh` uses `kubectl rollout restart` (not `kubectl set image`) because the image tag stays at `:latest` and only the digest changes — `set image` is a no-op in that case. The master Deployment uses `maxSurge: 1, maxUnavailable: 0` for zero-downtime rolling updates. The same `rspark:latest` image serves both the master and the worker — the subcommand (`master` / `worker`) is decided at runtime via CLI args.
 
@@ -77,7 +80,7 @@ The dashboard HTML is built inline in `crates/rspark-dashboard/src/ui.rs` as a `
 - `rspark-exec` — `LocalExecutor` (the pipeline driver) and the physical operator functions (`project_record`, `aggregate_batch`, `join_batches`, …). `Executor::execute` returns a `RecordBatch`. The integration tests in `crates/rspark-exec/tests/integration.rs` exercise the planner→executor round-trip.
 - `rspark-cluster` — `Master` (state machine: `submit_job` → plan → `pop_pending_task` → worker polls) and `Worker` (HTTP loop: register, poll for tasks, execute, report). State is in `ClusterState` behind `parking_lot::RwLock` and is per-master-pod (not shared between pods — that's why the master Deployment is `replicas: 1`).
 - `rspark-api` — `axum` router. The interesting handler is `POST /v1/sql` in `routes.rs`: it intercepts `SHOW CREATE TABLE` first, then plans + executes the query, updates the in-memory job state, and returns `{columns, rows, row_count, duration_ms, job}`. Catalog endpoints: `GET/POST/DELETE /v1/catalog/tables`, `GET /v1/catalog/suggestions`.
-- `rspark-dashboard` — self-contained HTML/JS dashboard. Single source file: `src/ui.rs` (the `DASHBOARD_HTML` constant). Two tabs: `SQL Lab` (editor + result + metrics) and `Cluster` (workers / jobs / stages / tasks). SQL Lab has inline autocomplete (`updateAutocomplete` + `currentToken` + `positionPopup`).
+- `rspark-dashboard` — self-contained HTML/JS dashboard. Single source file: `src/ui.rs` (the `DASHBOARD_HTML` constant). Two tabs: `SQL Lab` (editor + result + metrics) and `Cluster` (workers / jobs / stages / tasks). SQL Lab has inline autocomplete (`updateAutocomplete` + `currentToken` + `positionPopup`) and an **Examples** section between the editor and the metrics strip — pill buttons that load preset queries into the editor (the streaming-table pills use the `.example-stream` class to render in blue).
 - `rspark-cli` — clap subcommands. `master` and `worker` are the two halves of the cluster; `sql` and `shell` are the local execution paths; `submit` posts a job to the master; `dashboard` runs a dashboard-only server that fetches state from a remote master URL.
 
 ## Conventions and gotchas
@@ -90,6 +93,8 @@ The dashboard HTML is built inline in `crates/rspark-dashboard/src/ui.rs` as a `
 - **Worker registration is once-only.** `run_worker` in `crates/rspark-cli/src/commands.rs` does one HTTP `POST /v1/workers` at startup, then enters a poll loop. If the master rolls, the worker's registration dies and it doesn't re-register. A `rollout restart` of the workers after a master rollout is the workaround. (Filed in the codebase as a known limitation.)
 - **Dashboard autocomplete popup.** A live `positionPopup()` walks back from the cursor to find the current token, then renders matches as a `<div class="autocomplete-popup">` absolutely positioned under the textarea. The `mirror` `<span>` is a hidden element used to compute caret pixel position from line metrics. The popup must be `display: block` (not just have content) — there was a bug where HTML was built correctly but the popup stayed hidden.
 - **SQL Lab "no matches" hint** uses the same popup with a different inner body. The `min length 1` filter is intentional — single-character matches would always be huge for the keyword list.
+- **Examples section ordering.** The Examples pill row lives between the SQL editor and the Execution metrics strip in `DASHBOARD_HTML`. If you move it, the visual "click to load, then Ctrl+Enter to run" rhythm breaks (the pills feel like they belong to the editor). The two streaming-table pills (`stream × batch join`, `page views / signup country`) only work after `./scripts/seed-mock-data.sh` has registered `click_events` as `kind: streaming_table` — without it, the catalog reports `NotFound("table 'click_events' not found")`.
+- **Catalog `kind` matters for re-registration.** `POST /v1/catalog/tables` now takes an optional `kind` field (`batch` | `streaming_table` | `materialized_view`). The seed script re-uses this to re-point `click_events` back at the raw NDJSON (the pipeline output is pipe-delimited; the CsvSource uses comma) **without** demoting it to batch. Forgetting `kind` on the re-registration silently drops the streaming-table badge from autocomplete.
 
 ## Adding a SQL feature — the file tour
 
@@ -123,4 +128,4 @@ For DDL other than `SHOW CREATE TABLE`, intercept in `execute_sql` (see the `try
 
 ## Mock data
 
-`examples/data/` has `employees.csv` (20 rows, 6 cols), `sales.csv` (20 rows, 5 cols, with shared IDs to make JOIN meaningful), and `events.json` (NDJSON, 15 events). `examples/demo.sh` is a 12-query tour of the SQL surface. The Dockerfile `COPY`s the examples into `/app/examples` so the master has them baked in. The same data is also in `k8s/01-configmap.yaml` as a backup if you ever want to mount a ConfigMap instead.
+`examples/data/` has `employees.csv` (20 rows, 6 cols), `sales.csv` (20 rows, 5 cols, with shared IDs to make JOIN meaningful), `users.csv` (200 rows), `orders.csv` (400 rows), and `clickstream.jsonl` (NDJSON, 1500 events; 23 anonymous `user_id`s exercise the LEFT JOIN null branch). `examples/demo.sh` is a 12-query tour of the SQL surface. The Dockerfile `COPY`s the examples into `/app/examples` so the master has them baked in. The same data is also in `k8s/01-configmap.yaml` as a backup if you ever want to mount a ConfigMap instead. After a rolling restart wipes the in-memory catalog, re-run `./scripts/seed-mock-data.sh` to re-register the batch tables in the catalog and re-flip `click_events` to `kind: streaming_table`.

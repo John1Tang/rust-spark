@@ -22,7 +22,7 @@ use rspark_core::error::{Error, Result};
 use rspark_core::RecordBatch;
 use rspark_exec::ExecutionContext;
 use rspark_sql::planner::Catalog;
-use rspark_sql::Planner;
+use rspark_sql::{Planner, TableKind};
 use rspark_storage::SourceRegistry;
 use serde::Serialize;
 use tracing::{info, warn};
@@ -116,6 +116,14 @@ impl PipelineRunner {
         let output = self.execute_flow(pipeline, flow, input).await?;
         let bytes = write_destination(&flow.destination, &output).await?;
         source.commit().await?;
+        // Register the flow's output in the catalog so the dashboard's
+        // autocomplete surfaces it (and downstream flows can read it).
+        // Failures here are non-fatal — the run already produced bytes
+        // and is reported; a registration error would just mean the
+        // table isn't queryable until the next run.
+        if let Err(e) = self.register_flow_output(flow, &output) {
+            warn!(flow = %flow.name, "register_flow_output failed: {e}");
+        }
         info!(
             flow = %flow.name,
             rows = output.len(),
@@ -131,6 +139,32 @@ impl PipelineRunner {
             row_count: output.len(),
             destination: describe(&flow.destination),
         })
+    }
+
+    fn register_flow_output(&self, flow: &Flow, output: &RecordBatch) -> Result<()> {
+        let (path, source): (String, String) = match &flow.destination {
+            crate::spec::Destination::File { path } => {
+                (path.display().to_string(), "csv".to_string())
+            }
+            crate::spec::Destination::S3 { key, bucket } => {
+                let b = bucket
+                    .clone()
+                    .or_else(|| std::env::var("AWS_S3_BUCKET").ok())
+                    .unwrap_or_else(|| "<no-bucket>".into());
+                (format!("s3://{b}/{key}"), "s3_csv".to_string())
+            }
+        };
+        let kind = match flow.kind {
+            FlowKind::StreamingTable => TableKind::StreamingTable,
+            FlowKind::MaterializedView => TableKind::MaterializedView,
+        };
+        self.catalog.register_with_kind(
+            &flow.name,
+            &path,
+            &source,
+            output.schema().clone(),
+            kind,
+        )
     }
 
     /// Run a flow's SQL. For a streaming table the input is the polled

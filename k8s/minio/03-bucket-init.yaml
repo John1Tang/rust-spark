@@ -23,9 +23,8 @@ spec:
             - -c
             - |
               set -eu
-              echo "Waiting for MinIO..."
-              until /usr/bin/mc ready local 2>/dev/null || \
-                    /usr/bin/mc ready http://minio:9000/ 2>/dev/null; do
+              echo "Waiting for MinIO at http://minio:9000/..."
+              until /usr/bin/mc ready http://minio:9000/ 2>/dev/null; do
                 sleep 2
               done
               echo "MinIO is ready"

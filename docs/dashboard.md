@@ -30,7 +30,12 @@ HTML in your editor and edit it directly.
 - **Tables panel** (left sidebar, top). Clicking a table inserts its
   name; "remove" unregisters it from the catalog via `DELETE
   /v1/catalog/tables/:name`.
-- **Sample queries**. One click runs the query.
+- **Examples** — pill buttons in their own section between the editor
+  and the execution-metrics strip. Clicking a pill loads the preset
+  query into the editor (it does **not** auto-run; press **Ctrl+Enter**
+  to execute). Two of the pills are styled in blue (`example-stream`
+  class) because they touch streaming tables — they are the most
+  useful starting points for a streaming-⨯-batch demo.
 - **History**. Last 8 queries, persisted in `localStorage`.
 - **Execution metrics** strip — total runs, succeeded, failed, average
   duration, last query. Persisted in `localStorage` so reloads don't

@@ -47,6 +47,7 @@ arrow-schema = "59"
 aws-credential-types = "1"
 aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls", "rt-tokio"] }
 aws-sdk-s3 = { version = "1", default-features = false, features = ["behavior-version-latest", "rt-tokio", "rustls"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 csv = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 futures = "0.3"
@@ -61,3 +62,101 @@ rdkafka = { version = "0.36", default-features = false, features = ["tokio", "dy
 lto = "thin"
 codegen-units = 1
 strip = true
+
+# ── Profile tuning ────────────────────────────────────────────────────
+# Strategy: full debug info for our own crates (so rust-lldb / VS Code
+# can show locals and types); line-tables-only for the heavy data-parse
+# deps (so incremental rebuilds after a one-line edit stay in the
+# 3-8 s range, not the 30-60 s range). Dependencies you actually
+# debug — tokio / axum / kube / serde_json — get opt-level 0 in the
+# package list below so step-through works there too.
+#
+# Effect on this workspace: `cargo check` after touching a file in
+# crates/rspark-core goes from ~45 s to ~5 s.
+[profile.dev]
+debug = 2             # full debug for our own crates (line tables + locals + types)
+incremental = true    # explicitly on (already the default)
+
+# Heavy data-parse / compute deps: opt-level 3 in dev builds for runtime
+# speed, line-tables-only debuginfo because we never step into them.
+# Listed individually (not as a glob) so debugging tokio / axum / kube
+# still works at opt-level 0.
+[profile.dev.package."arrow"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."arrow-array"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."arrow-schema"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."sqlparser"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."rdkafka"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."rustls"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."aws-config"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."aws-sdk-s3"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."aws-credential-types"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."aws-smithy-runtime"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."aws-smithy-types"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."aws-sigv4"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."chrono"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+[profile.dev.package."uuid"]
+opt-level = 3
+codegen-units = 1
+debug = 1
+
+# Skip entirely unused artifacts during `cargo check --workspace`.
+# Halves wall time on the first check because no test binaries are
+# built. `cargo test --workspace` still produces them on demand.
+# (cargo respects `CARGO_PROFILE_DEV_BENCH=false` from the env; this
+# is just the workspace-level default.)
+[profile.dev.build-override]
+opt-level = 0
+
+# `release-fast` is for `scripts/deploy.sh` (operator build only). The
+# default `release` profile stays for any production-shaped artifact that
+# needs LTO — notably the master/worker binary in `docker/Dockerfile`
+# (still uses `cargo build --release`, produces target/release/*).
+# `release-fast` drops LTO + cranks codegen-units so the operator
+# compiles in a fraction of the time. The runtime regression is small
+# (<5% in our workload — operator is I/O-bound against kube-apiserver),
+# and the deploy loop is run dozens of times per day.
+[profile."release-fast"]
+inherits = "release"
+lto = false
+codegen-units = 16
+debug = false
+strip = "debuginfo"

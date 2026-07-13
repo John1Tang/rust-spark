@@ -2839,9 +2839,9 @@ dependencies = [
 
 [[package]]
 name = "rdkafka-sys"
-version = "4.10.0+2.12.1"
+version = "4.8.0+2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e234cf318915c1059d4921ef7f75616b5219b10b46e9f3a511a15eb4b56a3f77"
+checksum = "ced38182dc436b3d9df0c77976f37a67134df26b050df1f0006688e46fc4c8be"
 dependencies = [
  "libc",
  "num_enum",
@@ -3094,6 +3094,7 @@ dependencies = [
  "parking_lot",
  "rspark-cluster",
  "rspark-core",
+ "rustls 0.23.41",
  "schemars",
  "serde",
  "serde_json",
@@ -3635,7 +3636,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

@@ -1,0 +1,42 @@
+# Cargo workspace settings for rspark.
+#
+# These are the defaults that make day-to-day `cargo build` / `cargo check`
+# fast on this 10-core / 32 GB box. Anything that should hold for *every*
+# developer and *every* environment lives here. One-off overrides go via
+# env vars (CARGO_BUILD_JOBS, CARGO_INCREMENTAL) — see the "env overrides"
+# section at the bottom.
+
+# ── registry ─────────────────────────────────────────────────────────────
+# Sparse protocol: crates.io serves the index from a CDN instead of a
+# full git clone of the index repo. Resolves are 10-100× faster on a
+# cold cache and on flaky networks. The old git protocol is being
+# phased out by crates.io anyway (it was deprecated in 1.68).
+[registries.crates-io]
+protocol = "sparse"
+
+# ── build parallelism ────────────────────────────────────────────────────
+# `build.jobs` caps the number of rustc invocations cargo spawns at once.
+# We use the default (= num_cpus = 10 here). If you hit OOM on a
+# memory-constrained runner, override via CARGO_BUILD_JOBS env var or
+# drop this to 6-8. The arrow + aws-sdk + rdkafka dep set is heavy, so
+# each rustc invocation can peak at ~4 GB RSS — with 10 jobs and 32 GB
+# total RAM we leave ~8 GB headroom for Docker + the kernel, which is
+# enough on macOS but tight on Linux without swap.
+#
+# Override per-invocation: CARGO_BUILD_JOBS=6 cargo build --workspace
+[build]
+jobs = 10
+incremental = true
+
+# ── target-dir ───────────────────────────────────────────────────────────
+# Keep the target dir inside the workspace (default) but make sure git
+# ignores the cross-compile outputs — see ../.gitignore.
+# (Leaving here as a comment for future-you: do NOT move target-dir to
+# /tmp; the BuildKit cache mounts in docker/Dockerfile expect /app/target.)
+
+# ── env overrides you can pass on the command line ───────────────────────
+#   CARGO_BUILD_JOBS=N        override [build] jobs (used by CI runners)
+#   CARGO_INCREMENTAL=0       disable for cleaner benchmark runs
+#   CARGO_PROFILE_DEV_DEBUG=line-tables-only   fast incremental dev builds
+#   CARGO_PROFILE_RELEASE_DEBUG=0              release stripped of debug info
+#   RUSTC_WRAPPER=sccache     enable cross-build caching (install separately)

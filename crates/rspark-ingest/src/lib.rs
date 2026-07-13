@@ -36,12 +36,17 @@ struct IngestResponse {
 /// `KAFKA_TOPIC` from the environment. Returns when the listener
 /// stops (e.g. Ctrl-C).
 pub async fn run() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
+    // Best-effort: install a tracing subscriber. The CLI already
+    // installs one in its own `main`; using `.try_init()` here means
+    // the second call is a silent no-op rather than a panic. The
+    // standalone binary benefits because `main.rs` skips its own
+    // init and lets this one install.
+    let _ = tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
-        .init();
+        .try_init();
 
     let brokers = std::env::var("KAFKA_BROKERS")
         .unwrap_or_else(|_| "kafka.rspark.svc.cluster.local:9092".into());

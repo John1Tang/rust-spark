@@ -1,0 +1,401 @@
+order_id,user_id,product,quantity,unit_price,order_date,status
+1,83,Keychron K2,2,199,2025-02-14,completed
+2,138,Keychron K2,1,149,2025-01-28,shipped
+3,55,Apple Magic Mouse,1,49,2024-12-21,completed
+4,62,Keychron K2,1,349,2024-12-18,cancelled
+5,145,Bose QC45,1,99,2025-02-09,shipped
+6,16,Keychron K2,4,29,2024-10-27,shipped
+7,35,Anker USB-C Hub,3,199,2024-10-07,completed
+8,147,Dell U2723,3,349,2025-02-22,completed
+9,149,Anker USB-C Hub,2,149,2024-09-25,pending
+10,17,Samsung Odyssey G7,1,499,2024-10-23,pending
+11,137,Kindle Oasis,4,149,2024-12-29,completed
+12,93,iPad Air,3,99,2024-10-17,cancelled
+13,63,Anker USB-C Hub,1,499,2024-11-16,completed
+14,88,Logitech MX Master,4,129,2025-02-03,completed
+15,132,Dell U2723,4,79,2024-11-27,completed
+16,108,Razer Huntsman,1,799,2024-09-20,shipped
+17,147,LG Gram 16,3,149,2025-02-25,shipped
+18,128,Herman Miller Aeron,4,49,2024-09-24,completed
+19,179,Herman Miller Aeron,1,29,2025-02-27,pending
+20,148,Ergotron LX,4,129,2024-12-08,pending
+21,89,Dell U2723,1,249,2024-11-30,shipped
+22,30,Razer Huntsman,4,29,2024-10-26,completed
+23,34,Ergotron LX,2,199,2024-12-10,cancelled
+24,128,Apple Magic Mouse,1,79,2024-12-24,shipped
+25,72,Herman Miller Aeron,2,199,2025-01-19,pending
+26,107,Sony WH-1000XM5,3,799,2024-12-07,completed
+27,22,Bose QC45,2,79,2024-10-30,completed
+28,4,Herman Miller Aeron,4,499,2024-10-17,completed
+29,2,LG Gram 16,2,199,2025-01-15,shipped
+30,145,Elgato Stream Deck,3,79,2025-02-24,shipped
+31,159,Razer Huntsman,1,249,2025-02-22,shipped
+32,101,Logitech MX Master,4,199,2024-12-10,completed
+33,163,Logitech MX Master,4,29,2024-10-19,completed
+34,113,Kindle Oasis,2,49,2024-11-27,completed
+35,27,Anker USB-C Hub,1,499,2024-10-09,completed
+36,94,Kindle Oasis,1,49,2024-10-24,completed
+37,39,LG Gram 16,3,149,2025-02-02,completed
+38,32,Samsung Odyssey G7,1,249,2024-12-29,completed
+39,80,iPad Air,1,79,2024-09-27,completed
+40,190,Dell U2723,3,249,2025-02-25,shipped
+41,6,Dell U2723,2,349,2024-12-02,pending
+42,140,Bose QC45,1,349,2024-11-16,cancelled
+43,24,Ergotron LX,3,349,2024-12-03,completed
+44,92,Razer Huntsman,2,349,2025-01-17,shipped
+45,85,Razer Huntsman,2,499,2024-10-20,completed
+46,103,Samsung Odyssey G7,2,99,2025-01-11,completed
+47,188,Samsung Odyssey G7,1,29,2024-11-11,completed
+48,50,LG Gram 16,3,249,2024-11-29,completed
+49,57,Sony WH-1000XM5,1,99,2024-12-30,completed
+50,53,Elgato Stream Deck,4,499,2025-02-04,completed
+51,123,Elgato Stream Deck,3,799,2024-09-22,pending
+52,31,Samsung Odyssey G7,4,1299,2024-10-22,completed
+53,112,Samsung Odyssey G7,3,49,2024-12-11,completed
+54,191,Dell U2723,1,1299,2024-10-11,completed
+55,8,Razer Huntsman,2,499,2024-12-29,pending
+56,38,Dell U2723,4,799,2024-11-29,shipped
+57,141,Razer Huntsman,2,29,2024-09-04,pending
+58,167,Apple Magic Mouse,1,349,2024-10-06,cancelled
+59,50,Sony WH-1000XM5,2,29,2024-11-04,completed
+60,129,Herman Miller Aeron,2,499,2024-11-23,shipped
+61,108,Ergotron LX,2,29,2024-11-30,completed
+62,170,Anker USB-C Hub,4,349,2024-10-04,completed
+63,135,Kindle Oasis,1,249,2024-10-17,completed
+64,199,Samsung Odyssey G7,2,79,2024-10-07,shipped
+65,186,LG Gram 16,1,349,2024-09-16,pending
+66,133,Keychron K2,4,49,2025-01-22,completed
+67,49,Anker USB-C Hub,3,29,2024-09-26,completed
+68,144,LG Gram 16,1,49,2024-12-23,shipped
+69,130,Samsung Odyssey G7,2,1299,2024-11-10,shipped
+70,137,iPad Air,4,349,2024-11-03,shipped
+71,67,Apple Magic Mouse,2,249,2024-10-06,completed
+72,101,Bose QC45,4,149,2024-09-19,completed
+73,110,Herman Miller Aeron,1,99,2025-02-19,cancelled
+74,32,Bose QC45,2,1299,2025-02-12,completed
+75,37,Sony WH-1000XM5,3,79,2024-12-29,pending
+76,25,Bose QC45,4,249,2024-10-12,cancelled
+77,58,Anker USB-C Hub,2,1299,2024-12-20,completed
+78,87,LG Gram 16,4,99,2024-12-01,completed
+79,185,Anker USB-C Hub,3,29,2024-11-26,completed
+80,113,Anker USB-C Hub,1,199,2024-11-24,shipped
+81,76,Ergotron LX,1,49,2024-10-29,completed
+82,22,Ergotron LX,3,129,2024-09-11,cancelled
+83,47,Elgato Stream Deck,3,79,2024-12-18,pending
+84,67,Ergotron LX,4,79,2025-01-16,shipped
+85,147,Logitech MX Master,4,1299,2024-11-23,completed
+86,15,Herman Miller Aeron,2,199,2024-09-19,completed
+87,163,Kindle Oasis,1,129,2024-09-22,cancelled
+88,57,Samsung Odyssey G7,1,129,2024-10-02,completed
+89,87,Dell U2723,4,129,2025-02-07,completed
+90,135,Herman Miller Aeron,2,49,2024-10-12,completed
+91,47,Herman Miller Aeron,2,129,2025-02-08,shipped
+92,195,Anker USB-C Hub,2,129,2024-12-24,pending
+93,46,Herman Miller Aeron,3,149,2024-09-05,completed
+94,4,Anker USB-C Hub,1,1299,2025-01-08,completed
+95,132,Logitech MX Master,4,99,2024-12-24,pending
+96,167,Anker USB-C Hub,4,799,2025-01-05,cancelled
+97,101,Sony WH-1000XM5,3,1299,2024-10-26,completed
+98,51,Keychron K2,2,199,2024-11-28,cancelled
+99,34,iPad Air,1,49,2025-02-08,completed
+100,111,Bose QC45,2,29,2024-09-22,cancelled
+101,98,iPad Air,3,499,2024-11-02,completed
+102,12,Herman Miller Aeron,4,79,2024-10-11,completed
+103,1,Anker USB-C Hub,3,149,2024-11-24,completed
+104,63,LG Gram 16,1,129,2024-10-26,completed
+105,1,Samsung Odyssey G7,3,199,2024-09-22,completed
+106,129,Razer Huntsman,2,99,2025-01-08,completed
+107,24,Apple Magic Mouse,3,49,2024-10-07,shipped
+108,11,Herman Miller Aeron,4,29,2024-11-16,pending
+109,60,Elgato Stream Deck,1,499,2025-01-14,cancelled
+110,40,Dell U2723,4,149,2025-01-05,completed
+111,186,Bose QC45,2,29,2025-01-10,completed
+112,188,Kindle Oasis,2,349,2025-01-08,cancelled
+113,5,Keychron K2,2,49,2024-09-08,completed
+114,164,Elgato Stream Deck,3,49,2024-12-06,completed
+115,143,Bose QC45,1,799,2024-09-05,shipped
+116,175,Keychron K2,2,249,2024-11-07,completed
+117,18,Logitech MX Master,1,799,2025-01-13,pending
+118,189,Elgato Stream Deck,4,129,2024-09-20,completed
+119,61,Samsung Odyssey G7,2,99,2025-02-14,completed
+120,98,Herman Miller Aeron,1,249,2025-02-23,cancelled
+121,12,Dell U2723,2,49,2025-02-01,completed
+122,66,Dell U2723,3,499,2025-01-24,completed
+123,124,Bose QC45,1,249,2024-11-08,completed
+124,178,Herman Miller Aeron,2,799,2025-01-04,pending
+125,133,Samsung Odyssey G7,3,249,2024-12-29,cancelled
+126,31,Ergotron LX,2,129,2024-09-22,completed
+127,5,Elgato Stream Deck,3,249,2024-09-20,shipped
+128,116,Ergotron LX,3,199,2024-10-24,completed
+129,20,Herman Miller Aeron,1,79,2025-01-13,completed
+130,34,LG Gram 16,3,49,2025-02-28,completed
+131,128,Dell U2723,4,199,2024-09-07,completed
+132,126,iPad Air,4,199,2024-11-17,completed
+133,107,Logitech MX Master,3,199,2024-11-20,cancelled
+134,85,Elgato Stream Deck,1,149,2024-11-26,completed
+135,31,Ergotron LX,2,1299,2024-09-04,pending
+136,75,Apple Magic Mouse,3,149,2024-09-17,completed
+137,151,Razer Huntsman,1,149,2024-12-19,completed
+138,13,Elgato Stream Deck,3,49,2024-09-14,pending
+139,74,Apple Magic Mouse,2,99,2024-11-08,shipped
+140,81,Ergotron LX,2,149,2024-12-19,completed
+141,195,Sony WH-1000XM5,4,349,2025-01-19,pending
+142,21,Samsung Odyssey G7,1,1299,2024-12-15,shipped
+143,193,Samsung Odyssey G7,2,799,2024-11-13,completed
+144,141,Apple Magic Mouse,2,79,2024-12-30,completed
+145,73,Herman Miller Aeron,3,129,2025-02-15,completed
+146,168,Anker USB-C Hub,2,129,2025-01-02,pending
+147,101,Dell U2723,1,79,2025-02-12,completed
+148,54,Samsung Odyssey G7,4,349,2024-10-27,completed
+149,195,Anker USB-C Hub,4,199,2024-10-06,completed
+150,63,Anker USB-C Hub,1,79,2024-11-27,completed
+151,82,Razer Huntsman,2,149,2024-11-06,shipped
+152,52,Apple Magic Mouse,1,1299,2024-12-15,completed
+153,191,LG Gram 16,2,199,2024-11-09,cancelled
+154,16,LG Gram 16,4,129,2025-01-26,completed
+155,176,Ergotron LX,2,49,2024-11-09,completed
+156,99,Apple Magic Mouse,4,799,2024-12-24,completed
+157,6,iPad Air,2,29,2024-12-18,cancelled
+158,122,Apple Magic Mouse,4,29,2024-09-19,cancelled
+159,136,Razer Huntsman,4,249,2024-11-03,completed
+160,58,Bose QC45,2,79,2025-01-12,completed
+161,185,Razer Huntsman,4,49,2025-01-20,completed
+162,1,Ergotron LX,2,99,2025-01-24,completed
+163,166,Herman Miller Aeron,3,79,2025-02-08,shipped
+164,163,Logitech MX Master,4,1299,2024-09-29,completed
+165,77,Sony WH-1000XM5,2,199,2024-11-06,cancelled
+166,154,Herman Miller Aeron,1,29,2025-01-16,completed
+167,72,Samsung Odyssey G7,3,799,2024-11-02,shipped
+168,61,iPad Air,2,29,2024-12-15,pending
+169,79,Samsung Odyssey G7,1,29,2024-10-20,pending
+170,166,Sony WH-1000XM5,4,49,2024-11-05,pending
+171,109,Keychron K2,3,99,2025-01-05,pending
+172,87,Apple Magic Mouse,4,149,2025-02-22,completed
+173,2,Logitech MX Master,3,1299,2025-01-08,completed
+174,127,Sony WH-1000XM5,2,129,2024-10-20,completed
+175,57,Kindle Oasis,3,129,2024-09-28,completed
+176,157,Apple Magic Mouse,2,99,2025-01-03,pending
+177,15,Sony WH-1000XM5,2,199,2024-09-14,completed
+178,153,iPad Air,2,199,2024-09-14,completed
+179,48,iPad Air,4,249,2024-11-20,completed
+180,21,Dell U2723,2,149,2024-10-19,pending
+181,135,Bose QC45,4,29,2024-11-19,pending
+182,97,Dell U2723,3,149,2024-12-23,completed
+183,1,LG Gram 16,1,129,2024-09-21,completed
+184,32,Razer Huntsman,2,199,2024-12-01,cancelled
+185,80,iPad Air,4,49,2024-09-13,completed
+186,51,Sony WH-1000XM5,3,349,2024-12-24,completed
+187,94,Apple Magic Mouse,4,29,2025-02-09,completed
+188,161,Keychron K2,4,29,2024-12-06,completed
+189,17,iPad Air,1,129,2024-10-20,completed
+190,156,LG Gram 16,3,149,2024-11-09,shipped
+191,12,LG Gram 16,3,1299,2025-02-24,completed
+192,77,Ergotron LX,1,1299,2025-01-31,cancelled
+193,163,Logitech MX Master,1,29,2024-10-30,completed
+194,184,Ergotron LX,4,199,2024-11-04,completed
+195,127,Keychron K2,2,249,2024-10-17,cancelled
+196,190,Kindle Oasis,3,1299,2024-10-09,completed
+197,84,Razer Huntsman,3,249,2024-12-02,cancelled
+198,153,Apple Magic Mouse,1,349,2024-10-21,cancelled
+199,41,Bose QC45,2,199,2024-09-17,completed
+200,124,Ergotron LX,3,79,2024-12-19,completed
+201,19,Sony WH-1000XM5,3,499,2024-09-22,completed
+202,108,Dell U2723,4,1299,2024-12-24,completed
+203,35,Ergotron LX,4,249,2025-02-06,pending
+204,61,Herman Miller Aeron,1,129,2024-11-15,shipped
+205,69,Sony WH-1000XM5,3,129,2024-11-06,completed
+206,64,Dell U2723,2,99,2024-10-31,completed
+207,149,Apple Magic Mouse,2,149,2024-09-17,completed
+208,63,Bose QC45,2,799,2024-09-26,completed
+209,10,Ergotron LX,1,29,2024-12-31,cancelled
+210,60,Ergotron LX,4,149,2024-09-11,completed
+211,60,Kindle Oasis,1,29,2024-10-19,cancelled
+212,150,Anker USB-C Hub,2,49,2024-12-05,cancelled
+213,46,Razer Huntsman,4,499,2024-11-06,cancelled
+214,171,Kindle Oasis,1,49,2025-02-11,pending
+215,159,LG Gram 16,3,99,2024-09-10,completed
+216,37,Keychron K2,1,99,2024-11-05,shipped
+217,188,Apple Magic Mouse,2,29,2024-11-23,pending
+218,96,Logitech MX Master,2,499,2024-11-19,completed
+219,9,Logitech MX Master,4,349,2025-01-02,completed
+220,26,Dell U2723,4,799,2025-01-19,pending
+221,137,Apple Magic Mouse,1,799,2024-10-12,pending
+222,70,Herman Miller Aeron,4,129,2025-02-18,completed
+223,14,Ergotron LX,3,1299,2025-01-24,completed
+224,107,Bose QC45,4,29,2024-12-03,completed
+225,101,Apple Magic Mouse,4,99,2024-09-02,completed
+226,109,Kindle Oasis,1,49,2024-12-13,completed
+227,118,Keychron K2,2,79,2024-09-04,shipped
+228,37,Kindle Oasis,4,49,2025-01-25,completed
+229,189,Herman Miller Aeron,2,79,2024-11-29,completed
+230,134,Apple Magic Mouse,2,49,2024-09-28,completed
+231,193,Elgato Stream Deck,2,129,2024-10-03,completed
+232,124,Ergotron LX,3,29,2025-02-03,pending
+233,100,iPad Air,1,1299,2025-02-06,cancelled
+234,42,Kindle Oasis,2,499,2024-12-13,cancelled
+235,51,Sony WH-1000XM5,4,79,2025-01-23,completed
+236,103,Logitech MX Master,2,199,2024-12-01,completed
+237,64,Elgato Stream Deck,2,29,2025-01-22,cancelled
+238,173,Logitech MX Master,1,799,2024-11-22,completed
+239,154,Razer Huntsman,4,349,2025-02-08,completed
+240,167,Sony WH-1000XM5,4,129,2025-01-28,completed
+241,100,Samsung Odyssey G7,3,249,2025-01-07,completed
+242,6,Samsung Odyssey G7,1,499,2025-01-04,completed
+243,115,Apple Magic Mouse,4,79,2024-12-31,completed
+244,18,LG Gram 16,2,149,2024-12-20,completed
+245,114,Dell U2723,1,29,2025-02-10,completed
+246,188,Logitech MX Master,3,1299,2025-01-09,completed
+247,193,Keychron K2,4,799,2024-10-05,cancelled
+248,17,Ergotron LX,1,99,2024-10-04,completed
+249,74,Logitech MX Master,2,799,2024-10-27,cancelled
+250,90,Ergotron LX,3,79,2024-11-22,shipped
+251,71,Anker USB-C Hub,4,79,2024-11-05,completed
+252,54,Sony WH-1000XM5,3,499,2025-01-08,completed
+253,96,Apple Magic Mouse,1,99,2024-10-17,completed
+254,163,Ergotron LX,3,799,2024-11-23,completed
+255,44,Keychron K2,3,49,2025-01-14,pending
+256,93,Kindle Oasis,4,349,2025-01-12,pending
+257,27,Elgato Stream Deck,3,349,2025-02-09,completed
+258,189,LG Gram 16,3,129,2024-12-06,shipped
+259,38,Samsung Odyssey G7,3,149,2024-09-21,completed
+260,46,Herman Miller Aeron,1,129,2025-01-11,completed
+261,164,iPad Air,3,1299,2024-09-01,completed
+262,57,Bose QC45,2,129,2025-02-05,completed
+263,107,Samsung Odyssey G7,3,29,2024-10-04,completed
+264,157,Keychron K2,1,29,2024-09-14,shipped
+265,91,LG Gram 16,3,49,2025-01-12,shipped
+266,58,Kindle Oasis,4,499,2024-11-17,completed
+267,53,Dell U2723,3,499,2024-12-31,completed
+268,4,Samsung Odyssey G7,2,1299,2024-10-09,completed
+269,17,Apple Magic Mouse,2,799,2024-11-09,cancelled
+270,68,Elgato Stream Deck,1,29,2025-02-13,shipped
+271,90,iPad Air,4,499,2025-01-11,completed
+272,64,Keychron K2,2,29,2024-09-12,shipped
+273,7,Dell U2723,4,79,2024-10-31,completed
+274,200,Anker USB-C Hub,1,29,2025-02-04,pending
+275,51,Anker USB-C Hub,2,199,2024-10-22,shipped
+276,165,Anker USB-C Hub,4,499,2024-10-15,completed
+277,17,Ergotron LX,3,799,2024-09-13,pending
+278,123,iPad Air,1,199,2024-12-21,completed
+279,21,Logitech MX Master,4,79,2024-10-28,completed
+280,60,Ergotron LX,1,49,2024-11-25,pending
+281,178,Herman Miller Aeron,3,1299,2024-09-14,pending
+282,142,Herman Miller Aeron,4,799,2025-01-12,completed
+283,165,Keychron K2,2,49,2025-01-08,completed
+284,67,Dell U2723,2,1299,2024-10-22,pending
+285,84,Kindle Oasis,2,199,2024-11-24,completed
+286,98,iPad Air,4,249,2025-01-14,completed
+287,7,Kindle Oasis,4,1299,2024-10-30,completed
+288,55,Logitech MX Master,4,499,2025-01-28,shipped
+289,44,Logitech MX Master,2,29,2024-09-07,completed
+290,160,iPad Air,2,149,2024-10-07,completed
+291,8,Bose QC45,1,79,2025-02-25,pending
+292,11,Logitech MX Master,1,1299,2024-09-12,cancelled
+293,152,Ergotron LX,3,99,2025-01-15,pending
+294,17,Sony WH-1000XM5,4,49,2024-11-03,completed
+295,29,Logitech MX Master,1,29,2025-02-10,cancelled
+296,193,Dell U2723,3,249,2024-09-26,completed
+297,194,LG Gram 16,2,129,2024-11-21,completed
+298,67,Ergotron LX,1,149,2024-11-05,completed
+299,13,Anker USB-C Hub,3,149,2025-02-02,completed
+300,74,Apple Magic Mouse,1,199,2024-09-08,shipped
+301,198,iPad Air,1,149,2024-12-30,completed
+302,138,Kindle Oasis,2,1299,2024-09-24,cancelled
+303,74,Anker USB-C Hub,2,199,2024-09-01,completed
+304,74,Samsung Odyssey G7,1,29,2024-11-29,completed
+305,126,LG Gram 16,2,249,2025-01-30,cancelled
+306,132,Herman Miller Aeron,3,499,2024-10-11,cancelled
+307,55,Logitech MX Master,2,249,2024-10-13,pending
+308,197,Anker USB-C Hub,1,249,2025-02-26,cancelled
+309,27,Apple Magic Mouse,3,149,2024-09-25,completed
+310,191,Keychron K2,1,199,2025-02-13,completed
+311,53,Ergotron LX,3,129,2024-12-19,shipped
+312,129,Sony WH-1000XM5,2,199,2025-02-09,completed
+313,33,LG Gram 16,1,149,2025-01-27,shipped
+314,40,iPad Air,4,799,2025-01-20,completed
+315,44,Razer Huntsman,4,249,2025-02-24,completed
+316,149,Samsung Odyssey G7,2,79,2024-11-25,pending
+317,179,Herman Miller Aeron,2,349,2024-10-20,completed
+318,194,Sony WH-1000XM5,2,1299,2024-10-10,pending
+319,84,LG Gram 16,3,79,2024-10-31,completed
+320,67,Logitech MX Master,1,79,2025-02-16,completed
+321,99,iPad Air,2,79,2024-11-17,completed
+322,112,Bose QC45,3,99,2024-09-28,completed
+323,72,Keychron K2,2,199,2024-12-28,completed
+324,103,Anker USB-C Hub,4,1299,2024-10-27,pending
+325,76,Herman Miller Aeron,4,29,2024-10-07,shipped
+326,189,Ergotron LX,4,29,2024-11-02,cancelled
+327,111,iPad Air,4,99,2025-02-18,pending
+328,199,Bose QC45,2,799,2024-10-17,completed
+329,117,Bose QC45,4,149,2024-11-06,pending
+330,26,iPad Air,4,99,2024-12-12,pending
+331,162,Samsung Odyssey G7,2,129,2024-12-18,completed
+332,6,Bose QC45,4,349,2025-02-20,cancelled
+333,47,Elgato Stream Deck,3,29,2024-12-09,completed
+334,28,Sony WH-1000XM5,1,129,2025-01-18,completed
+335,184,Logitech MX Master,2,349,2024-11-29,cancelled
+336,148,iPad Air,4,349,2024-10-23,completed
+337,132,Anker USB-C Hub,1,799,2024-12-04,completed
+338,106,Dell U2723,4,99,2025-02-23,completed
+339,132,LG Gram 16,1,1299,2025-02-05,pending
+340,15,Apple Magic Mouse,3,129,2024-12-07,completed
+341,4,Bose QC45,1,199,2024-12-17,pending
+342,173,Logitech MX Master,3,499,2024-11-07,completed
+343,78,Razer Huntsman,4,349,2024-10-27,completed
+344,119,Ergotron LX,2,79,2024-10-04,cancelled
+345,18,Anker USB-C Hub,2,249,2025-02-12,pending
+346,58,Bose QC45,2,149,2025-02-18,cancelled
+347,106,Bose QC45,4,129,2025-01-19,completed
+348,200,Herman Miller Aeron,4,149,2024-10-29,pending
+349,97,Dell U2723,3,199,2025-02-21,completed
+350,1,Bose QC45,3,149,2024-11-02,completed
+351,83,Kindle Oasis,4,249,2024-12-19,pending
+352,22,Elgato Stream Deck,3,79,2024-11-17,completed
+353,15,Razer Huntsman,1,499,2024-11-23,completed
+354,136,Keychron K2,3,799,2025-01-28,pending
+355,3,Herman Miller Aeron,2,49,2025-02-15,completed
+356,156,Elgato Stream Deck,1,499,2024-10-07,completed
+357,48,Sony WH-1000XM5,4,149,2024-10-10,completed
+358,137,Kindle Oasis,2,499,2025-02-24,cancelled
+359,24,iPad Air,3,99,2025-01-05,completed
+360,136,Bose QC45,1,1299,2024-12-22,completed
+361,143,Sony WH-1000XM5,1,129,2024-12-17,cancelled
+362,36,Keychron K2,4,249,2025-01-21,completed
+363,120,Sony WH-1000XM5,2,1299,2025-01-04,completed
+364,43,Samsung Odyssey G7,1,79,2024-11-22,pending
+365,145,Elgato Stream Deck,4,799,2024-11-15,completed
+366,96,Logitech MX Master,4,199,2025-02-21,completed
+367,164,Keychron K2,3,799,2025-02-13,completed
+368,157,Razer Huntsman,1,799,2024-11-24,completed
+369,131,Keychron K2,4,249,2024-10-07,completed
+370,184,LG Gram 16,4,799,2024-10-03,completed
+371,169,Razer Huntsman,3,149,2024-12-31,shipped
+372,142,LG Gram 16,2,129,2024-12-21,completed
+373,65,LG Gram 16,1,129,2024-11-14,cancelled
+374,127,Herman Miller Aeron,4,149,2025-01-07,cancelled
+375,130,Samsung Odyssey G7,3,99,2025-02-15,cancelled
+376,31,iPad Air,3,99,2024-11-21,completed
+377,33,iPad Air,1,29,2024-12-12,shipped
+378,104,Logitech MX Master,1,199,2024-11-16,completed
+379,12,Razer Huntsman,2,249,2025-02-03,pending
+380,16,Bose QC45,4,499,2024-10-08,pending
+381,179,Bose QC45,1,99,2024-09-11,pending
+382,118,Dell U2723,2,49,2025-02-17,cancelled
+383,10,Keychron K2,4,49,2025-02-15,completed
+384,36,Elgato Stream Deck,3,349,2024-11-06,completed
+385,48,Keychron K2,4,29,2024-11-21,completed
+386,145,Anker USB-C Hub,1,249,2025-01-24,completed
+387,31,Ergotron LX,4,499,2025-02-26,completed
+388,115,Apple Magic Mouse,1,29,2025-02-22,shipped
+389,152,Anker USB-C Hub,2,249,2024-12-15,completed
+390,22,Bose QC45,4,99,2024-10-09,completed
+391,110,Bose QC45,1,29,2025-02-23,completed
+392,23,Samsung Odyssey G7,2,49,2024-10-04,completed
+393,71,Ergotron LX,2,249,2024-10-18,completed
+394,94,Herman Miller Aeron,2,1299,2024-09-22,pending
+395,143,Ergotron LX,4,249,2025-02-19,completed
+396,14,Keychron K2,1,29,2024-09-16,pending
+397,176,Herman Miller Aeron,1,199,2024-11-19,pending
+398,154,Keychron K2,2,249,2025-02-03,completed
+399,95,Dell U2723,4,249,2025-02-21,completed
+400,30,Bose QC45,3,799,2024-10-12,cancelled

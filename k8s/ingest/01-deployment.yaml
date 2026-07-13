@@ -25,7 +25,7 @@ spec:
         - name: rspark-ingest
           image: rspark:latest
           imagePullPolicy: Never
-          command: ["rspark", "ingest"]
+          command: ["rspark-cli", "ingest"]
           env:
             - name: KAFKA_BROKERS
               value: "kafka.rspark.svc.cluster.local:9092"

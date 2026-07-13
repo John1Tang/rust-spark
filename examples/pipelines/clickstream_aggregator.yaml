@@ -1,0 +1,36 @@
+# clickstream_aggregator — small Declarative Pipeline that materialises
+# the `click_events` streaming table over `/app/examples/data/clickstream.jsonl`
+# (NDJSON page events shipped in this repo) so the dashboard's autocomplete
+# surfaces a `streaming_table` entry alongside the batch tables.
+#
+# Pre-register the table so the `FROM click_events` in the query resolves
+# the first time the planner runs:
+#
+#   curl -X POST -H 'Content-Type: application/json' \
+#        -d '{"name":"click_events","path":"/app/examples/data/clickstream.jsonl","source":"json"}' \
+#        http://127.0.0.1:7077/v1/catalog/tables
+#
+# Then run the pipeline from inside the master pod:
+#
+#   curl -sS --data-binary @examples/pipelines/clickstream_aggregator.yaml \
+#        -H "Content-Type: application/yaml" \
+#        http://127.0.0.1:7077/v1/pipelines
+#
+# After it completes the catalog entry for `click_events` flips to
+# `kind: streaming_table`, and the dashboard's SQL Lab side panel groups
+# it under "Streaming tables".
+pipeline: clickstream_aggregator
+flows:
+  - name: click_events
+    kind: streaming_table
+    # The pipeline runner doesn't yet support `kind: s3` sources (see
+    # `SourceSpec::S3 → "S3 streaming source not yet wired"` in
+    # `rspark-pipelines/src/runner.rs:202`). Until it does, the seed
+    # script pushes the latest clickstream.jsonl into the master pod at
+    # this path so the local `kind: json` source can read it.
+    source: { kind: json, path: /app/examples/data/clickstream.jsonl }
+    query: "SELECT user_id, country FROM click_events"
+    refresh: full
+    destination:
+      kind: file
+      path: /tmp/rspark/streaming/click_events.csv

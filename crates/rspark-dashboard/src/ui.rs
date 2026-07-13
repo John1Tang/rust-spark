@@ -366,6 +366,41 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
         font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
         border: 1px solid rgba(240, 171, 252, 0.25);
       }
+      .samples-prominent {
+        gap: 10px;
+        margin-top: 4px;
+        padding: 12px;
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(240, 171, 252, 0.18);
+        border-radius: 8px;
+      }
+      .example-pill {
+        background: rgba(240, 171, 252, 0.10) !important;
+        color: var(--code) !important;
+        font-weight: 500 !important;
+        padding: 8px 14px !important;
+        font-size: 13px !important;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        border: 1px solid rgba(240, 171, 252, 0.35) !important;
+        border-radius: 999px !important;
+        cursor: pointer;
+        transition: background 120ms ease, transform 120ms ease, border-color 120ms ease;
+      }
+      .example-pill:hover {
+        background: rgba(240, 171, 252, 0.22) !important;
+        border-color: rgba(240, 171, 252, 0.7) !important;
+        transform: translateY(-1px);
+      }
+      .example-pill:active { transform: translateY(0); }
+      .example-pill.example-stream {
+        background: rgba(96, 165, 250, 0.14) !important;
+        border-color: rgba(96, 165, 250, 0.55) !important;
+        color: #bfdbfe !important;
+      }
+      .example-pill.example-stream:hover {
+        background: rgba(96, 165, 250, 0.28) !important;
+        border-color: rgba(96, 165, 250, 0.9) !important;
+      }
       .suggest {
         display: flex;
         gap: 6px;
@@ -392,9 +427,26 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
         cursor: pointer;
       }
       .suggest button.table { color: var(--code); border-color: rgba(240,171,252,0.3); }
+      .suggest button.streaming { color: #7dd3fc; border-color: rgba(125,211,252,0.4); background: rgba(125,211,252,0.05); }
+      .suggest button.view { color: #c4b5fd; border-color: rgba(196,181,253,0.4); background: rgba(196,181,253,0.05); }
       .suggest button.column { color: var(--accent); border-color: rgba(125,211,252,0.3); }
       .suggest button.function { color: var(--success); border-color: rgba(52,211,153,0.3); }
       .suggest button.keyword { color: var(--muted); }
+      .suggest .group-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 8px; padding: 2px 0; }
+      .suggest .group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+      .suggest .group:last-child { border-bottom: none; }
+      .suggest button .kind {
+        color: var(--muted);
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 1px 5px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.04);
+        margin-left: 4px;
+      }
+      .suggest button.streaming .kind { color: #7dd3fc; background: rgba(125,211,252,0.12); }
+      .suggest button.view .kind { color: #c4b5fd; background: rgba(196,181,253,0.12); }
       .exec-strip {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
@@ -446,6 +498,9 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
         background: rgba(255,255,255,0.04);
       }
       .autocomplete-popup .item[data-kind="table"] .kind { color: var(--code); }
+      .autocomplete-popup .item[data-kind="batch"] .kind { color: var(--code); }
+      .autocomplete-popup .item[data-kind="streaming_table"] .kind { color: #7dd3fc; background: rgba(125,211,252,0.12); }
+      .autocomplete-popup .item[data-kind="materialized_view"] .kind { color: #c4b5fd; background: rgba(196,181,253,0.12); }
       .autocomplete-popup .item[data-kind="column"] .kind { color: var(--accent); }
       .autocomplete-popup .item[data-kind="function"] .kind { color: var(--success); }
       .autocomplete-popup .hint {
@@ -509,16 +564,20 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
               <span class="auto-refresh" id="run-status"></span>
               <span style="margin-left:auto;color:var(--muted);font-size:11px;">type to see suggestions · Tab/Enter accepts · Ctrl+Space forces</span>
             </div>
-            <div class="samples">
-              <span style="color:var(--muted);font-size:11px;align-self:center;">samples:</span>
-              <button data-sql="SELECT * FROM employees LIMIT 5">employees*5</button>
-              <button data-sql="SELECT dept, AVG(salary) AS avg_sal, COUNT(*) AS n FROM employees GROUP BY dept ORDER BY avg_sal DESC">avg salary / dept</button>
-              <button data-sql="SELECT e.name, SUM(s.amount) AS total FROM employees e LEFT JOIN sales s ON e.id = s.id GROUP BY e.name ORDER BY total DESC">top earners+ sales</button>
-              <button data-sql="SELECT product, region, SUM(amount) AS total FROM sales GROUP BY product, region ORDER BY product, region">sales by product+region</button>
-              <button data-sql="SELECT event, COUNT(*) AS n FROM events GROUP BY event ORDER BY n DESC">events by type</button>
-              <button data-sql="SHOW CREATE TABLE employees">SHOW CREATE TABLE</button>
-            </div>
             <div class="history" id="history"></div>
+          </div>
+        </section>
+        <section>
+          <h2>Examples — click to load into the editor</h2>
+          <div class="samples samples-prominent">
+            <button class="example-pill" data-sql="SELECT * FROM employees LIMIT 5">employees*5</button>
+            <button class="example-pill" data-sql="SELECT dept, AVG(salary) AS avg_sal, COUNT(*) AS n FROM employees GROUP BY dept ORDER BY avg_sal DESC">avg salary / dept</button>
+            <button class="example-pill" data-sql="SELECT e.name, SUM(s.amount) AS total FROM employees e LEFT JOIN sales s ON e.id = s.id GROUP BY e.name ORDER BY total DESC">top earners+ sales</button>
+            <button class="example-pill" data-sql="SELECT product, region, SUM(amount) AS total FROM sales GROUP BY product, region ORDER BY product, region">sales by product+region</button>
+            <button class="example-pill" data-sql="SELECT event, COUNT(*) AS n FROM events GROUP BY event ORDER BY n DESC">events by type</button>
+            <button class="example-pill" data-sql="SHOW CREATE TABLE employees">SHOW CREATE TABLE</button>
+            <button class="example-pill example-stream" data-sql="SELECT c.ts, c.event_type, c.url, u.name AS user_name, u.email, u.country AS signup_country FROM click_events c LEFT JOIN users u ON c.user_id = u.user_id WHERE c.event_type = 'page_view' ORDER BY c.ts LIMIT 20">stream × batch join</button>
+            <button class="example-pill example-stream" data-sql="SELECT u.country AS signup_country, COUNT(*) AS page_views FROM click_events c JOIN users u ON c.user_id = u.user_id WHERE c.event_type = 'page_view' GROUP BY u.country ORDER BY page_views DESC">page views / signup country</button>
           </div>
         </section>
         <section>
@@ -844,14 +903,24 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
       }
 
       // --- Suggestions & autocomplete ---
-      const SuggState = { tables: [], columns: [], functions: [], keywords: [] };
+      const SuggState = {
+        tables: [],          // [{name, kind}] — kind is "batch" | "streaming_table" | "materialized_view"
+        columns: [],
+        functions: [],
+        keywords: [],
+      };
 
       async function refreshSuggestions() {
         try {
           const res = await fetch("/v1/catalog/suggestions");
           if (!res.ok) return;
           const data = await res.json();
-          SuggState.tables = data.tables || [];
+          // Backwards-compat: the old shape was a plain string list.
+          // New shape is `{name, kind}`. Normalise to the new shape so
+          // the rest of the renderer can stay simple.
+          SuggState.tables = (data.tables || []).map(t =>
+            typeof t === "string" ? { name: t, kind: "batch" } : t
+          );
           SuggState.columns = data.columns || [];
           SuggState.functions = data.functions || [];
           SuggState.keywords = data.keywords || [];
@@ -860,10 +929,20 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
           // ignore
         }
       }
+      function tableKindLabel(kind) {
+        if (kind === "streaming_table") return "stream";
+        if (kind === "materialized_view") return "view";
+        return "table";
+      }
       function renderSuggestions() {
         const host = document.getElementById("suggestions");
+        const batch = SuggState.tables.filter(t => t.kind === "batch");
+        const streaming = SuggState.tables.filter(t => t.kind === "streaming_table");
+        const views = SuggState.tables.filter(t => t.kind === "materialized_view");
         const groups = [
-          { label: "tables", items: SuggState.tables, cls: "table", kind: "table" },
+          { label: "streaming tables", items: streaming, cls: "table streaming", kind: "streaming_table" },
+          { label: "tables", items: batch, cls: "table", kind: "batch" },
+          { label: "materialized views", items: views, cls: "table view", kind: "materialized_view" },
           { label: "functions", items: SuggState.functions, cls: "function", kind: "function" },
           { label: "columns", items: SuggState.columns, cls: "column", kind: "column" },
           { label: "keywords", items: SuggState.keywords, cls: "keyword", kind: "keyword" },
@@ -871,7 +950,11 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
         host.innerHTML = groups
           .filter(g => g.items.length > 0)
           .map(g => {
-            const items = g.items.slice(0, 16).map(name => `<button class="${g.cls}" data-insert="${escapeHtml(name)}" title="${escapeHtml(name)} (${g.kind})">${escapeHtml(name)}</button>`).join("");
+            const items = g.items.slice(0, 16).map(it => {
+              const name = typeof it === "string" ? it : it.name;
+              const sub = typeof it === "string" ? g.kind : (it.kind || g.kind);
+              return `<button class="${g.cls}" data-insert="${escapeHtml(name)}" title="${escapeHtml(name)} (${sub})">${escapeHtml(name)}<span class="kind">${tableKindLabel(sub)}</span></button>`;
+            }).join("");
             const more = g.items.length > 16 ? `<span style="color:var(--muted);font-size:10px;">+${g.items.length - 16}</span>` : "";
             return `<div class="group"><span class="group-label">${g.label}</span>${items}${more}</div>`;
           }).join("") || '<div class="empty" style="width:100%;">no suggestions yet</div>';
@@ -905,17 +988,22 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
       }
       function allCandidates() {
         return [
-          ...SuggState.tables.map(n => ({ name: n, kind: "table" })),
+          ...SuggState.tables.map(t => ({ name: t.name, kind: t.kind })),
           ...SuggState.columns.map(n => ({ name: n, kind: "column" })),
           ...SuggState.functions.map(n => ({ name: n, kind: "function" })),
           ...SuggState.keywords.map(n => ({ name: n, kind: "keyword" })),
         ];
       }
       function priorityKind(kind) {
-        if (kind === "table") return 0;
-        if (kind === "column") return 1;
-        if (kind === "function") return 2;
-        return 3;
+        // Streaming tables and materialized views float to the top when
+        // the user is typing a table name — they're the "interesting"
+        // ones (vs. static batch tables).
+        if (kind === "streaming_table") return 0;
+        if (kind === "materialized_view") return 1;
+        if (kind === "batch") return 2;
+        if (kind === "column") return 3;
+        if (kind === "function") return 4;
+        return 5;
       }
       function updateAutocomplete() {
         const ta = document.getElementById("sql");
@@ -952,8 +1040,8 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
         AcState.open = true;
         AcState.start = start;
         popup.innerHTML = matches.map((m, i) => `
-          <div class="item${i === 0 ? " active" : ""}" data-idx="${i}" data-kind="${m.kind}">
-            <span>${escapeHtml(m.name)}</span><span class="kind">${m.kind}</span>
+          <div class="item${i === 0 ? " active" : ""} kind-${escapeHtml(m.kind)}" data-idx="${i}" data-kind="${escapeHtml(m.kind)}">
+            <span>${escapeHtml(m.name)}</span><span class="kind">${escapeHtml(tableKindLabel(m.kind))}</span>
           </div>
           <div class="hint">↑↓ navigate · Tab/Enter accept · Esc dismiss</div>
         `).join("");

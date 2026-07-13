@@ -91,11 +91,29 @@ file.
 
 **Request**:
 ```json
-{"name": "users", "path": "/data/users.csv"}
+{
+  "name": "users",
+  "path": "/data/users.csv",
+  "source": "csv",
+  "kind": "batch"
+}
 ```
 
-`source` is optional — defaults to `csv` for `.csv`, `json` for
-`.json`. Returns `201 Created` on success.
+Fields:
+
+- `name` (required) — catalog name. Re-registering with the same name
+  overwrites the entry.
+- `path` (required) — file path readable by the master. Can be a local
+  path (e.g. `/app/examples/data/users.csv`) or an `s3://…` URI if the
+  S3 source is registered.
+- `source` (optional) — `csv` or `json`. Defaults from the file
+  extension.
+- `kind` (optional) — `batch` (default), `streaming_table`, or
+  `materialized_view`. The seed script uses this to re-promote
+  `click_events` to `streaming_table` after a rolling restart wipes
+  the in-memory catalog.
+
+Returns `201 Created` on success.
 
 ### `GET /v1/catalog/tables`
 

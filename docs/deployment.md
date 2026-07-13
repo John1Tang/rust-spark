@@ -15,13 +15,21 @@ brew install k3d                        # if you don't have k3d already
 ./scripts/deploy.sh                     # build image, import, rollout restart
 
 # To use the cluster
-./scripts/port-forward.sh               # dashboard :8080, API :7077
+./scripts/port-forward.sh               # dashboard :8088, API :7077
 ./scripts/sql.sh "SELECT * FROM employees LIMIT 5"
 kubectl -n rspark get pods -w
+
+# Seed mock data + register the catalog tables (idempotent; re-run
+# after a rolling restart to repopulate the in-memory catalog)
+./scripts/seed-mock-data.sh
 
 # optionally: a real k8s dashboard
 ./k8s/headlamp/apply.sh                 # installs Headlamp at http://127.0.0.1:8099
 ```
+
+> **Note:** the dashboard is forwarded to `:8088` (not `:8080`) on hosts
+> where Docker Desktop's settings API also binds IPv6 `:8080` — the IPv6
+> listener would otherwise intercept the browser request and return 404.
 
 That covers 95% of the work. The rest of this file is the why and the
 edge cases.

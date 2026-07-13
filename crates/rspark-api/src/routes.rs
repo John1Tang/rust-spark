@@ -412,6 +412,14 @@ pub struct RegisterTableRequest {
     pub name: String,
     pub path: String,
     pub source: Option<String>,
+    /// `batch` (default), `streaming_table`, or `materialized_view`.
+    /// Without this, the catalog entry is always `batch`. The seed
+    /// script uses it to re-promote `click_events` to `streaming_table`
+    /// after a rolling restart, since the pipeline runner's first
+    /// registration flips the kind but points the catalog at a
+    /// pipe-delimited output file that the CSV reader can't parse.
+    #[serde(default)]
+    pub kind: Option<String>,
 }
 
 async fn register_table(
@@ -434,9 +442,14 @@ async fn register_table(
         Ok(s) => s,
         Err(err) => return err_response(err),
     };
+    let kind = match body.kind.as_deref() {
+        Some("streaming_table") => rspark_sql::TableKind::StreamingTable,
+        Some("materialized_view") => rspark_sql::TableKind::MaterializedView,
+        _ => rspark_sql::TableKind::Batch,
+    };
     match state
         .catalog
-        .register(&body.name, &body.path, &source, schema)
+        .register_with_kind(&body.name, &body.path, &source, schema, kind)
     {
         Ok(()) => (
             StatusCode::CREATED,
@@ -523,29 +536,43 @@ const SQL_FUNCTIONS: &[&str] = &[
 
 #[derive(Debug, Serialize)]
 pub struct Suggestions {
-    pub tables: Vec<String>,
+    pub tables: Vec<TableSuggestion>,
     pub columns: Vec<String>,
     pub functions: Vec<String>,
     pub keywords: Vec<String>,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TableSuggestion {
+    pub name: String,
+    /// `batch`, `streaming_table`, or `materialized_view`.
+    pub kind: String,
+}
+
 async fn suggestions(State(state): State<ApiState>) -> axum::response::Response {
-    let names = match state.catalog.list_tables() {
+    let names_with_kind = match state.catalog.list_tables_with_kind() {
         Ok(n) => n,
         Err(err) => return err_response(err),
     };
     let mut columns = std::collections::BTreeSet::new();
-    for name in &names {
-        if let Ok(schema) = state.catalog.table_schema(name) {
-            for f in schema.fields() {
-                columns.insert(f.name.clone());
+    let tables: Vec<TableSuggestion> = names_with_kind
+        .iter()
+        .map(|(name, kind)| {
+            if let Ok(schema) = state.catalog.table_schema(name) {
+                for f in schema.fields() {
+                    columns.insert(f.name.clone());
+                }
             }
-        }
-    }
+            TableSuggestion {
+                name: name.clone(),
+                kind: kind.as_str().to_string(),
+            }
+        })
+        .collect();
     (
         StatusCode::OK,
         Json(Suggestions {
-            tables: names,
+            tables,
             columns: columns.into_iter().collect(),
             functions: SQL_FUNCTIONS.iter().map(|s| s.to_string()).collect(),
             keywords: SQL_KEYWORDS.iter().map(|s| s.to_string()).collect(),
@@ -743,12 +770,21 @@ mod tests {
             .register("employees", "/data/employees.csv", "csv", schema)
             .unwrap();
         let sugg = Suggestions {
-            tables: catalog.list_tables().unwrap(),
+            tables: catalog
+                .list_tables_with_kind()
+                .unwrap()
+                .into_iter()
+                .map(|(name, kind)| TableSuggestion {
+                    name,
+                    kind: kind.as_str().to_string(),
+                })
+                .collect(),
             columns: vec!["id".into(), "name".into()],
             functions: SQL_FUNCTIONS.iter().map(|s| s.to_string()).collect(),
             keywords: SQL_KEYWORDS.iter().map(|s| s.to_string()).collect(),
         };
-        assert!(sugg.tables.contains(&"employees".to_string()));
+        assert!(sugg.tables.iter().any(|t| t.name == "employees"));
+        assert_eq!(sugg.tables[0].kind, "batch");
         assert!(sugg.columns.contains(&"name".to_string()));
         assert!(sugg.functions.contains(&"COUNT".to_string()));
         assert!(sugg.keywords.contains(&"SELECT".to_string()));
