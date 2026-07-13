@@ -1,0 +1,35 @@
+# clickstream_live — Declarative Pipeline that tails Kafka topic
+# `rspark.page_events` and appends each polled batch to a local NDJSON
+# file. The HTTP handler returns 202 + a status URL; the runner keeps
+# running in a tokio task until the master pod is killed.
+#
+# Required cluster state (set up by `./scripts/seed-mock-data.sh`):
+#   - Kafka broker on `kafka.rspark.svc.cluster.local:9092` (k3s/k3d)
+#   - `rspark-ingest` Deployment producing to topic `rspark.page_events`
+#
+# Note: live flows bypass the SQL planner entirely — the polled batch
+# IS the output, written losslessly as NDJSON. The `query` field is
+# retained for documentation; transformations belong in a downstream
+# materialized-view flow that reads from this streaming table.
+#
+# After the pipeline is running, the catalog entry for `click_events`
+# is re-pointed at the NDJSON destination so SQL Lab can query the
+# streamed events with the streaming-table join demo.
+pipeline: clickstream_live
+flows:
+  - name: click_events
+    kind: streaming_table
+    source:
+      kind: kafka
+      topic: rspark.page_events
+      brokers: kafka.rspark.svc.cluster.local:9092
+      group_id: rspark-clickstream-live
+    # Query is unused for live flows (see note above) — the polled
+    # batch is appended verbatim as NDJSON. Transformations belong in
+    # a downstream materialized-view flow that reads from this table.
+    refresh:
+      kind: live
+      poll_ms: 500
+    destination:
+      kind: file
+      path: /tmp/rspark/live/click_events.ndjson

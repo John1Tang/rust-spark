@@ -5,6 +5,11 @@ WORKDIR /app
 # networks set http_proxy=https://... which Docker Desktop forwards
 # into the build, but the host already has VPN tunnel access and that
 # proxy is unreachable from inside the build sandbox.
+ENV http_proxy= \
+    https_proxy= \
+    HTTP_PROXY= \
+    HTTPS_PROXY= \
+    NO_PROXY="*"
 RUN echo 'Acquire::http::Proxy "false";' > /etc/apt/apt.conf.d/00no-proxy \
  && echo 'Acquire::https::Proxy "false";' >> /etc/apt/apt.conf.d/00no-proxy \
  && mkdir -p /root/.cargo \

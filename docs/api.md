@@ -180,6 +180,65 @@ Workers call this every few seconds to keep their status `Alive`.
 
 List / fetch / submit a job (returns `JobRequest`).
 
+## Pipelines
+
+Pipelines are declarative DAGs of flows. They're submitted as YAML in
+the request body and run against the master's catalog. A pipeline
+**lives forever in the master's in-memory registry** until the master
+pods roll.
+
+### `POST /v1/pipelines`
+
+Run a pipeline. Body is the raw YAML spec. Returns `200 OK` for
+one-shot (`refresh: full` / `incremental`) flows with the full
+report, or `202 Accepted` for `refresh: live` flows (which tail
+forever) with a `status_url` to poll.
+
+```bash
+curl -sS -X POST -H 'Content-Type: application/yaml' \
+    --data-binary @examples/pipelines/clickstream_live.yaml \
+    http://127.0.0.1:7077/v1/pipelines
+```
+
+### `GET /v1/pipelines`
+
+List registered pipelines by name. Returns an array of `{name, flows}`.
+
+### `GET /v1/pipelines/:name/dag`
+
+Returns the layered DAG (topo-sort) for the named pipeline, suitable
+for the dashboard's visual rendering.
+
+### `GET /v1/pipelines/:name/status`
+
+Returns the live-run status (only meaningful for pipelines submitted
+with `refresh: live`):
+
+```json
+{
+  "pipeline": "clickstream_live",
+  "started_at": "2026-07-13T14:33:02Z",
+  "last_batch_rows": 12,
+  "total_batches": 47,
+  "total_rows": 1823,
+  "last_batch_at": "2026-07-13T14:35:11Z",
+  "last_error": null
+}
+```
+
+### `GET /v1/pipelines/live`
+
+Lists all currently-running live pipelines (same shape as
+`/:name/status`).
+
+### `Refresh::Live { poll_ms }`
+
+Live flows are long-running tails: they poll the source every
+`poll_ms` ms and append each non-empty batch to the destination
+file. The runner bypasses the SQL planner entirely (the polled
+batch IS the output) so the `query` field is ignored for live
+flows. See `examples/pipelines/clickstream_live.yaml`.
+
 ## Example: a cURL session
 
 ```bash

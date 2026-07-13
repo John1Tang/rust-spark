@@ -37,6 +37,9 @@ pub struct Flow {
     #[serde(default)]
     pub depends_on: Vec<String>,
     pub source: SourceSpec,
+    /// Optional. `Refresh::Live` flows bypass the planner entirely —
+    /// the polled batch IS the output, so the SQL is ignored.
+    #[serde(default)]
     pub query: String,
     #[serde(default = "default_refresh")]
     pub refresh: Refresh,
@@ -52,11 +55,16 @@ pub enum FlowKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Refresh {
     #[default]
     Full,
     Incremental,
+    /// Long-running: poll the source forever, appending each batch to
+    /// the destination. Used by the live event-collector demo — the
+    /// HTTP handler returns 202 immediately and the runner keeps going
+    /// in a background tokio task.
+    Live { poll_ms: u64 },
 }
 
 fn default_refresh() -> Refresh {
@@ -167,5 +175,23 @@ flows:
 "#;
         let p = Pipeline::from_yaml(yaml).unwrap();
         assert_eq!(p.flows[0].refresh, Refresh::Full);
+    }
+
+    #[test]
+    fn live_refresh_round_trip() {
+        let yaml = r#"
+pipeline: p
+flows:
+  - name: a
+    kind: streaming_table
+    source: { kind: kafka, topic: t, brokers: b:9092, group_id: g }
+    refresh: { kind: live, poll_ms: 500 }
+    destination: { kind: file, path: /tmp/a.ndjson }
+"#;
+        let p = Pipeline::from_yaml(yaml).unwrap();
+        assert_eq!(
+            p.flows[0].refresh,
+            Refresh::Live { poll_ms: 500 }
+        );
     }
 }

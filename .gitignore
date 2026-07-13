@@ -26,3 +26,10 @@ Cargo.lock.bak
 .env
 .env.local
 *.local
+
+# Scratch docker build variants (kept locally during debugging; not
+# part of the production image build). The canonical build is
+# `docker/Dockerfile`.
+/docker/Dockerfile.host-registry
+/docker/Dockerfile.linux-build
+/docker/Dockerfile.swap

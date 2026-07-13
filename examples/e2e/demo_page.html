@@ -1,116 +1,432 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>rspark demo shop</title>
   <style>
-    body { font: 14px system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-    h1 { font-size: 24px; }
-    .card { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin: 16px 0; cursor: pointer; }
-    .card:hover { background: #f6f6f6; }
-    button { padding: 8px 16px; cursor: pointer; }
-    .hidden { display: none; }
-    .scrollbox { height: 600px; overflow-y: scroll; border: 1px dashed #ccc; padding: 8px; }
+    :root {
+      --bg: #fafafa;
+      --panel: #ffffff;
+      --ink: #1a1a1a;
+      --ink-soft: #555;
+      --line: #e5e5e5;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --green: #16a34a;
+      --warn: #b45309;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 24px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-left: 8px; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.18); }
+    header .spacer { flex: 1; }
+    header .search {
+      width: 280px; max-width: 40vw;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font: inherit;
+      background: var(--bg);
+    }
+    header .search:focus { outline: none; border-color: var(--accent); background: var(--panel); }
+    header .cart-btn {
+      padding: 8px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      cursor: pointer;
+      font: inherit;
+      position: relative;
+    }
+    header .cart-btn:hover { border-color: var(--accent); color: var(--accent); }
+    header .cart-count {
+      display: inline-block;
+      min-width: 18px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+    @media (max-width: 880px) { main { grid-template-columns: 1fr; } .sidebar { order: -1; } }
+
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .pill {
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      cursor: pointer;
+      font: inherit;
+      color: var(--ink-soft);
+    }
+    .pill:hover { border-color: var(--accent); color: var(--accent); }
+    .pill.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: transform 0.06s ease, box-shadow 0.12s ease;
+      display: flex; flex-direction: column;
+    }
+    .card:hover { box-shadow: var(--shadow); transform: translateY(-1px); border-color: #d4d4d4; }
+    .card .emoji { font-size: 42px; line-height: 1; margin-bottom: 8px; }
+    .card .name { font-weight: 600; margin-bottom: 2px; }
+    .card .cat { color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .card .price { font-weight: 700; margin-bottom: 12px; }
+    .card .row { display: flex; gap: 8px; margin-top: auto; }
+    .card button {
+      flex: 1;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      cursor: pointer;
+      font: inherit;
+    }
+    .card button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .card button.primary:hover { background: #1d4ed8; }
+    .card button:hover:not(.primary) { border-color: var(--accent); color: var(--accent); }
+
+    .sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 80px; align-self: start; max-height: calc(100vh - 100px); }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+    .panel h3 { margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 600; }
+    .panel .meta { font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; }
+    .panel .meta .live { color: var(--green); font-weight: 600; }
+    .panel .meta .live::before { content: "●"; margin-right: 4px; }
+
+    .ticker { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+    .ticker .row { display: grid; grid-template-columns: 56px 80px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+    .ticker .row:last-child { border-bottom: none; }
+    .ticker .ago { color: var(--ink-soft); }
+    .ticker .type { color: var(--accent); font-weight: 600; }
+    .ticker .type.click { color: var(--warn); }
+    .ticker .type.scroll { color: #9333ea; }
+    .ticker .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .cart-list { font-size: 13px; }
+    .cart-list .empty { color: var(--ink-soft); font-style: italic; padding: 8px 0; }
+    .cart-list .item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); }
+    .cart-list .item:last-child { border-bottom: none; }
+    .cart-list .item .name { flex: 1; }
+    .cart-list .item .price { color: var(--ink-soft); margin-left: 8px; }
+    .cart-list .total { font-weight: 700; padding-top: 8px; border-top: 1px solid var(--line); margin-top: 4px; display: flex; justify-content: space-between; }
+
+    footer { text-align: center; color: var(--ink-soft); padding: 24px; font-size: 12px; }
   </style>
 </head>
 <body>
-  <h1 id="page-title">rspark demo shop</h1>
-  <p>Open this in a browser, scroll, click around. The rspark-tracker extension will capture and forward events to the ingest backend → Kafka.</p>
+  <header>
+    <h1>rspark demo shop<span class="dot" id="live-dot" title="streaming connection"></span></h1>
+    <input type="search" id="search" class="search" placeholder="Search products..." aria-label="Search products" />
+    <span class="spacer"></span>
+    <button class="cart-btn" id="cart-toggle">Cart <span class="cart-count" id="cart-count">0</span></button>
+  </header>
 
-  <button id="cta-buy">Add to cart</button>
-  <button id="cta-info">More info</button>
+  <main>
+    <section>
+      <div class="pills" id="pills"></div>
+      <div class="grid" id="grid"></div>
+    </section>
 
-  <div class="scrollbox" id="long">
-    <p>Item 1</p><p>Item 2</p><p>Item 3</p><p>Item 4</p><p>Item 5</p>
-    <p>Item 6</p><p>Item 7</p><p>Item 8</p><p>Item 9</p><p>Item 10</p>
-    <p>Item 11</p><p>Item 12</p><p>Item 13</p><p>Item 14</p><p>Item 15</p>
-    <p>Item 16</p><p>Item 17</p><p>Item 18</p><p>Item 19</p><p>Item 20</p>
-    <p>You scrolled to the bottom!</p>
-  </div>
+    <aside class="sidebar">
+      <div class="panel">
+        <h3>Recent activity</h3>
+        <div class="meta">Streaming from <span class="live">click_events</span> via /v1/sql</div>
+        <div class="ticker" id="ticker"><div class="row"><span class="ago">…</span><span class="type">loading</span><span class="url">querying stream</span></div></div>
+      </div>
 
-  <h2>Catalog (batch table)</h2>
-  <p>The pipeline joins page_click events to this batch catalog by tag.</p>
-  <table border="1" cellpadding="6">
-    <thead><tr><th>tag</th><th>label</th><th>category</th></tr></thead>
-    <tbody>
-      <tr><td>BUTTON</td><td>cta-buy</td><td>conversion</td></tr>
-      <tr><td>BUTTON</td><td>cta-info</td><td>engagement</td></tr>
-      <tr><td>A</td><td>card link</td><td>engagement</td></tr>
-      <tr><td>DIV</td><td>scroll box</td><td>engagement</td></tr>
-    </tbody>
-  </table>
+      <div class="panel">
+        <h3>Cart</h3>
+        <div class="cart-list" id="cart-list"><div class="empty">Cart is empty</div></div>
+      </div>
+    </aside>
+  </main>
 
-  <!-- rspark-tracker-style emitter. Same JSON shape as the extension
-       so the Kafka topic doesn't care which side produced the event. -->
+  <footer>Events are emitted in batches to <code id="ingest-url">…</code> and stream into the <code>click_events</code> streaming table.</footer>
+
   <script>
-    (function () {
-      var ingestUrl = (window.RSPARK_INGEST_URL || "http://127.0.0.1:8081/v1/events");
-      var buf = [];
-      function send(p) {
-        buf.push(p);
-        if (buf.length >= 8) flush();
+  (function () {
+    // ---------- Configuration ----------
+    var ingestUrl = (window.RSPARK_INGEST_URL || "http://127.0.0.1:8081/v1/events");
+    var sqlApiUrl = (window.RSPARK_SQL_API_URL || (location.origin.replace(":8088", ":7077") + "/v1/sql"));
+    var refreshMs = 5000;
+    document.getElementById("ingest-url").textContent = ingestUrl;
+
+    // ---------- Product catalog (mirrors examples/data/clickstream.jsonl urls + frequencies) ----------
+    var PRODUCTS = [
+      { slug: "desks",         emoji: "🖥️",  price: 349, desc: "Standing desk, walnut"        },
+      { slug: "monitors",      emoji: "🖥",   price: 899, desc: "27\" 4K studio display"       },
+      { slug: "keyboards",     emoji: "⌨️",   price: 129, desc: "Mechanical, hot-swap"         },
+      { slug: "mice",          emoji: "🖱",   price:  79, desc: "Wireless ergonomic"           },
+      { slug: "webcams",       emoji: "📷",   price:  89, desc: "1080p, USB-C"                 },
+      { slug: "microphones",   emoji: "🎙",   price: 159, desc: "USB condenser"                },
+      { slug: "headphones",    emoji: "🎧",   price: 249, desc: "Over-ear, ANC"                },
+      { slug: "cameras",       emoji: "📸",   price: 649, desc: "Mirrorless, 24MP"             },
+      { slug: "lighting",      emoji: "💡",   price: 119, desc: "Studio LED panel"             },
+      { slug: "smart-home",    emoji: "🏠",   price: 199, desc: "Hub + 4 sensors"              },
+      { slug: "routers",       emoji: "📡",   price: 229, desc: "Wi-Fi 6E, mesh-ready"         },
+      { slug: "cables",        emoji: "🔌",   price:  19, desc: "USB-C, braided 2m"            },
+      { slug: "storage",       emoji: "💾",   price: 109, desc: "1TB NVMe SSD"                 },
+      { slug: "tablets",       emoji: "📱",   price: 479, desc: "11\" LCD, 128GB"              },
+      { slug: "printers",      emoji: "🖨",   price: 219, desc: "Color laser, duplex"          },
+      { slug: "notebooks",     emoji: "📓",   price:  12, desc: "A5, dotted, hardcover"        },
+    ];
+
+    var cart = JSON.parse(localStorage.getItem("rspark_cart") || "[]");
+
+    // ---------- Event emitter (rspark-tracker compatible) ----------
+    // Field names match what the live Kafka consumer + clickstream.jsonl
+    // fixture use: {event_type, ts (ms), url, user_id, country}. Using
+    // anything else would land in /tmp/rspark/live/click_events.ndjson
+    // with a divergent schema and the JSON source CSV reader would
+    // refuse to decode the heterogeneous rows.
+    var buf = [];
+    function send(p) {
+      // Normalize legacy field names so the on-disk schema stays uniform.
+      if (p.type && !p.event_type) p.event_type = p.type;
+      if (p.ts_ms && !p.ts) p.ts = p.ts_ms;
+      buf.push(p);
+      if (buf.length >= 6) flush();
+    }
+    function flush() {
+      if (buf.length === 0) return;
+      var batch = buf.slice();
+      buf = [];
+      fetch(ingestUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ events: batch }),
+        keepalive: true,
+      }).catch(function () {});
+    }
+    setInterval(flush, 1500);
+    window.addEventListener("beforeunload", flush);
+
+    // Pick a stable user_id per session, then a pseudo-random country.
+    var sessionUser = JSON.parse(localStorage.getItem("rspark_user") || "null");
+    if (!sessionUser) {
+      var COUNTRIES = ["US","KR","SE","TR","EG","CN","AU","GB","DE","FR","PL","CA","BR","IN","JP"];
+      sessionUser = {
+        user_id: 1 + Math.floor(Math.random() * 200),
+        country: COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)],
+      };
+      localStorage.setItem("rspark_user", JSON.stringify(sessionUser));
+    }
+    document.getElementById("live-dot").title = "session user_id=" + sessionUser.user_id + " country=" + sessionUser.country;
+
+    // page_view on first paint
+    send({
+      type: "page_view",
+      ts_ms: Date.now(),
+      url: location.pathname,
+      user_id: sessionUser.user_id,
+      country: sessionUser.country,
+    });
+
+    // ---------- Cart ----------
+    function persistCart() {
+      localStorage.setItem("rspark_cart", JSON.stringify(cart));
+      document.getElementById("cart-count").textContent = cart.length;
+      renderCart();
+    }
+    function addToCart(p) {
+      cart.push({ slug: p.slug, name: p.name, price: p.price, ts: Date.now() });
+      persistCart();
+      send({
+        type: "page_click",
+        ts_ms: Date.now(),
+        url: "/cart/add?slug=" + p.slug,
+        user_id: sessionUser.user_id,
+        country: sessionUser.country,
+      });
+    }
+    function renderCart() {
+      var el = document.getElementById("cart-list");
+      if (cart.length === 0) { el.innerHTML = '<div class="empty">Cart is empty</div>'; return; }
+      var rows = cart.map(function (c) {
+        return '<div class="item"><span class="name">' + escapeHtml(c.name) + '</span><span class="price">$' + c.price + '</span></div>';
+      }).join("");
+      var total = cart.reduce(function (s, c) { return s + c.price; }, 0);
+      el.innerHTML = rows + '<div class="total"><span>Total</span><span>$' + total + '</span></div>';
+    }
+    document.getElementById("cart-toggle").addEventListener("click", function () {
+      send({
+        type: "page_click", ts_ms: Date.now(),
+        url: "/cart/open", user_id: sessionUser.user_id, country: sessionUser.country,
+      });
+      document.querySelector(".cart-list").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" })[c]; }); }
+
+    // ---------- Filtering ----------
+    var activeCategory = "all";
+    var searchTerm = "";
+    var allCategories = ["all"].concat(PRODUCTS.map(function (p) { return p.slug; }));
+    function renderPills() {
+      var el = document.getElementById("pills");
+      el.innerHTML = allCategories.map(function (c) {
+        var label = c === "all" ? "All" : c;
+        var active = c === activeCategory ? " active" : "";
+        return '<button class="pill' + active + '" data-cat="' + c + '">' + label + '</button>';
+      }).join("");
+      Array.prototype.forEach.call(el.querySelectorAll(".pill"), function (btn) {
+        btn.addEventListener("click", function () {
+          activeCategory = btn.getAttribute("data-cat");
+          send({
+            type: "page_click", ts_ms: Date.now(),
+            url: "/category/" + activeCategory,
+            user_id: sessionUser.user_id, country: sessionUser.country,
+          });
+          renderPills(); renderGrid();
+        });
+      });
+    }
+    function visibleProducts() {
+      var term = searchTerm.toLowerCase().trim();
+      return PRODUCTS.filter(function (p) {
+        if (activeCategory !== "all" && p.slug !== activeCategory) return false;
+        if (term && (p.slug.indexOf(term) === -1 && p.desc.toLowerCase().indexOf(term) === -1)) return false;
+        return true;
+      });
+    }
+    function renderGrid() {
+      var el = document.getElementById("grid");
+      var list = visibleProducts();
+      if (list.length === 0) { el.innerHTML = '<div style="color:var(--ink-soft);padding:32px;text-align:center;">No products match.</div>'; return; }
+      el.innerHTML = list.map(function (p) {
+        var name = p.slug.charAt(0).toUpperCase() + p.slug.slice(1, -1);
+        return '' +
+          '<article class="card" data-slug="' + p.slug + '">' +
+            '<div class="emoji">' + p.emoji + '</div>' +
+            '<div class="cat">' + p.slug + '</div>' +
+            '<div class="name">' + escapeHtml(name) + '</div>' +
+            '<div style="color:var(--ink-soft);font-size:12px;margin-bottom:10px;">' + escapeHtml(p.desc) + '</div>' +
+            '<div class="price">$' + p.price + '</div>' +
+            '<div class="row">' +
+              '<button class="primary" data-act="cart">Add to cart</button>' +
+              '<button data-act="view">Details</button>' +
+            '</div>' +
+          '</article>';
+      }).join("");
+      Array.prototype.forEach.call(el.querySelectorAll(".card"), function (card) {
+        var slug = card.getAttribute("data-slug");
+        card.addEventListener("click", function (ev) {
+          var btn = ev.target.closest("button");
+          var act = btn ? btn.getAttribute("data-act") : "card";
+          var p = PRODUCTS.find(function (x) { return x.slug === slug; });
+          if (act === "cart") { addToCart(p); return; }
+          var url = act === "view" ? "/products/" + slug : "/products/" + slug + "?ref=card";
+          send({
+            type: "page_click", ts_ms: Date.now(),
+            url: url, user_id: sessionUser.user_id, country: sessionUser.country,
+          });
+          if (act === "view") {
+            card.style.boxShadow = "0 0 0 2px var(--accent)";
+            setTimeout(function () { card.style.boxShadow = ""; }, 600);
+          }
+        });
+      });
+    }
+
+    // ---------- Search ----------
+    var searchTimer = null;
+    document.getElementById("search").addEventListener("input", function (ev) {
+      searchTerm = ev.target.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        send({
+          type: "page_click", ts_ms: Date.now(),
+          url: "/search?q=" + encodeURIComponent(searchTerm),
+          user_id: sessionUser.user_id, country: sessionUser.country,
+        });
+        renderGrid();
+      }, 250);
+    });
+
+    // ---------- Scroll telemetry ----------
+    var lastScroll = 0;
+    window.addEventListener("scroll", function () {
+      var now = Date.now();
+      if (now - lastScroll < 400) return;
+      lastScroll = now;
+      var doc = document.documentElement;
+      var top = window.scrollY || doc.scrollTop || 0;
+      var height = Math.max(doc.scrollHeight, document.body ? document.body.scrollHeight : 0);
+      var depth = height > window.innerHeight ? Math.min(100, Math.round((top / (height - window.innerHeight)) * 100)) : 100;
+      send({
+        type: "page_scroll", ts_ms: now,
+        url: location.pathname + "?depth=" + depth,
+        user_id: sessionUser.user_id, country: sessionUser.country,
+      });
+    }, { passive: true });
+
+    // ---------- Live ticker: pull from /v1/sql every 5s ----------
+    function fmtAgo(ms) {
+      var s = Math.max(1, Math.round((Date.now() - ms) / 1000));
+      if (s < 60) return s + "s";
+      if (s < 3600) return Math.round(s / 60) + "m";
+      return Math.round(s / 3600) + "h";
+    }
+    function renderTicker(rows) {
+      var el = document.getElementById("ticker");
+      if (!rows || rows.length === 0) {
+        el.innerHTML = '<div class="row"><span class="ago">–</span><span class="type">empty</span><span class="url">no events yet</span></div>';
+        return;
       }
-      function flush() {
-        if (buf.length === 0) return;
-        var batch = buf.slice();
-        buf = [];
-        fetch(ingestUrl, {
+      el.innerHTML = rows.map(function (r) {
+        var ts = Number(r[0]);
+        var type = String(r[1]);
+        var url = String(r[2]);
+        var cls = type === "page_click" ? " click" : (type === "page_scroll" ? " scroll" : "");
+        return '<div class="row"><span class="ago">' + fmtAgo(ts) + '</span><span class="type' + cls + '">' + type.replace("page_", "") + '</span><span class="url" title="' + escapeHtml(url) + '">' + escapeHtml(url) + '</span></div>';
+      }).join("");
+    }
+    async function refreshTicker() {
+      try {
+        var resp = await fetch(sqlApiUrl, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ events: batch }),
-        }).catch(function () {});
+          body: JSON.stringify({ sql: "SELECT ts, event_type, url FROM click_events ORDER BY ts DESC LIMIT 10" }),
+        });
+        if (!resp.ok) throw new Error("http " + resp.status);
+        var json = await resp.json();
+        renderTicker(json.rows || []);
+      } catch (e) {
+        // Silent: live ticker is decorative; first frame shows the placeholder.
       }
-      setInterval(flush, 1500);
-      window.addEventListener("beforeunload", flush);
+    }
+    refreshTicker();
+    setInterval(refreshTicker, refreshMs);
 
-      // page_view
-      send({
-        type: "page_view",
-        ts_ms: Date.now(),
-        url: location.href,
-        title: document.title || "",
-        viewport_w: window.innerWidth,
-        viewport_h: window.innerHeight,
-        referrer: document.referrer || "",
-      });
-
-      var lastScroll = 0;
-      window.addEventListener("scroll", function () {
-        var now = Date.now();
-        if (now - lastScroll < 150) return;
-        lastScroll = now;
-        var doc = document.documentElement;
-        var top = window.scrollY || doc.scrollTop || 0;
-        var height = Math.max(doc.scrollHeight, document.body ? document.body.scrollHeight : 0);
-        var depth = height > window.innerHeight ? Math.min(100, Math.round((top / (height - window.innerHeight)) * 100)) : 100;
-        send({
-          type: "page_scroll",
-          ts_ms: now,
-          url: location.href,
-          depth_pct: depth,
-          scroll_top: top,
-          scroll_height: height,
-          viewport_h: window.innerHeight,
-        });
-      }, { passive: true });
-
-      document.addEventListener("click", function (ev) {
-        var t = ev.target;
-        if (!t) return;
-        send({
-          type: "page_click",
-          ts_ms: Date.now(),
-          url: location.href,
-          x: ev.clientX,
-          y: ev.clientY,
-          tag: t.tagName || "",
-          id: t.id || "",
-          cls: (typeof t.className === "string" ? t.className : "") || "",
-          text: (t.innerText || "").slice(0, 80),
-          href: t.closest ? (t.closest("a") ? t.closest("a").href || "" : "") : "",
-        });
-      }, true);
-    })();
+    // ---------- Boot ----------
+    renderPills();
+    renderGrid();
+    renderCart();
+  })();
   </script>
 </body>
 </html>

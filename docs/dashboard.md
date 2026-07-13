@@ -36,6 +36,29 @@ HTML in your editor and edit it directly.
   to execute). Two of the pills are styled in blue (`example-stream`
   class) because they touch streaming tables — they are the most
   useful starting points for a streaming-⨯-batch demo.
+- **Open event collector ↗ button** — opens
+  `examples/e2e/demo_page.html` (a real-feeling e-commerce shop:
+  16 product cards across categories that mirror
+  `examples/data/clickstream.jsonl`'s url slugs — desks, monitors,
+  keyboards, webcams, … — with search, category filter pills, a
+  sticky cart counter, and a **live activity ticker** that fetches
+  `/v1/sql` every 5 s and shows the most recent `click_events` rows
+  on first paint). Clicking a card's "Add to cart" or "Details"
+  button, choosing a category, or typing in the search box posts
+  `page_view` / `page_click` / `page_scroll` events to the in-cluster
+  `rspark-ingest` (port 8081), which produces them onto Kafka topic
+  `rspark.page_events`. The page is served by the dashboard binary
+  itself via `include_str!`, so no host setup or extra route is
+  needed beyond `./scripts/port-forward.sh` forwarding 8081. The
+  emitter normalizes field names to `{event_type, ts, url, user_id,
+  country}` so the live NDJSON stays uniform regardless of which
+  client wrote the events.
+- **Live refresh toggle** — when checked, re-runs the current query
+  every 1.5s via `setInterval(runSql, 1500)`. Editing the SQL or
+  re-running manually clears the interval. Pair this with the
+  streaming-table example pills: open the event collector in a new
+  tab, keep clicking, and watch the row count of the streaming-⨯-batch
+  join query grow.
 - **History**. Last 8 queries, persisted in `localStorage`.
 - **Execution metrics** strip — total runs, succeeded, failed, average
   duration, last query. Persisted in `localStorage` so reloads don't

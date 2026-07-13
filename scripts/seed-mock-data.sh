@@ -178,6 +178,42 @@ else
     say "  (pipeline run failed — click_events will stay batch; rerun ./scripts/seed-mock-data.sh)"
 fi
 
+# Start the live Kafka tail pipeline (tail of the rspark.page_events
+# topic → /tmp/rspark/live/click_events.ndjson). Returns 202 + a
+# status URL; the runner keeps polling forever. Optional — if Kafka /
+# ingest aren't up, we still finish the static seed successfully.
+LIVE_YAML="$ROOT/examples/pipelines/clickstream_live.yaml"
+if [ -f "$LIVE_YAML" ]; then
+    say "starting live clickstream pipeline (Kafka → /tmp/rspark/live/click_events.ndjson)"
+    RSPARK_POD="$(fresh_pod)"
+    kubectl -n "$NAMESPACE" cp "$LIVE_YAML" "$RSPARK_POD:/tmp/clickstream_live.yaml" >/dev/null 2>&1 || true
+    RSPARK_POD="$(fresh_pod)"
+    live_resp="$(kubectl -n "$NAMESPACE" exec -i "$RSPARK_POD" -- \
+        curl -sf -X POST -H 'Content-Type: application/yaml' \
+        --data-binary @/tmp/clickstream_live.yaml \
+        http://127.0.0.1:7077/v1/pipelines 2>&1 || true)"
+    if echo "$live_resp" | grep -q '"status":"started"'; then
+        say "  live pipeline accepted (202); check /v1/pipelines/clickstream_live/status"
+        # Re-point click_events at the live NDJSON destination so SQL
+        # Lab can join against the running tail. The static seed above
+        # pointed at the static file; the live tail writes to a
+        # different path. Both are valid; live wins by default.
+        RSPARK_POD="$(fresh_pod)"
+        ce_live='{"name":"click_events","path":"/tmp/rspark/live/click_events.ndjson","source":"json","kind":"streaming_table"}'
+        if kubectl -n "$NAMESPACE" exec -i "$RSPARK_POD" -- \
+            /bin/sh -c "printf '%s' '$ce_live' | curl -sf -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:7077/v1/catalog/tables" >/dev/null 2>&1
+        then
+            say "  click_events is now backed by the live NDJSON tail"
+        else
+            say "  (could not repoint click_events to live tail — falling back to static)"
+        fi
+    else
+        say "  (live pipeline not started — Kafka or rspark-ingest may be missing)"
+    fi
+else
+    say "  (clickstream_live.yaml not present; skipping live tail)"
+fi
+
 say "done"
 echo
 echo "  contents of s3://$BUCKET:"
@@ -185,3 +221,4 @@ mc_run ls --recursive "local/$BUCKET" | sed 's/^/    /'
 echo
 echo "  next: visit http://127.0.0.1:8088 (after ./scripts/port-forward.sh)"
 echo "         and click SQL Lab → 'stream × batch join' under Examples."
+echo "         Click 'open event collector ↗' to start generating live page events."

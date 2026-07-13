@@ -15,7 +15,7 @@ brew install k3d                        # if you don't have k3d already
 ./scripts/deploy.sh                     # build image, import, rollout restart
 
 # To use the cluster
-./scripts/port-forward.sh               # dashboard :8088, API :7077
+./scripts/port-forward.sh               # dashboard :8088, API :7077, ingest :8081
 ./scripts/sql.sh "SELECT * FROM employees LIMIT 5"
 kubectl -n rspark get pods -w
 
@@ -30,6 +30,9 @@ kubectl -n rspark get pods -w
 > **Note:** the dashboard is forwarded to `:8088` (not `:8080`) on hosts
 > where Docker Desktop's settings API also binds IPv6 `:8080` — the IPv6
 > listener would otherwise intercept the browser request and return 404.
+> The script also forwards `:8081` to the in-cluster `rspark-ingest`
+> service so the SQL Lab's "open event collector ↗" page can POST page
+> events from the host browser.
 
 That covers 95% of the work. The rest of this file is the why and the
 edge cases.

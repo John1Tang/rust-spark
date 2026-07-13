@@ -20,11 +20,26 @@ pub async fn run_dashboard(
     let api_router = build_router(api_state);
     let app = Router::new()
         .merge(api_router)
+        // Static assets (currently just the demo page) take precedence
+        // over the single-page-app fallback.
+        .route(
+            &format!("/{}", crate::DEMO_PAGE_PATH),
+            get(serve_demo_page),
+        )
         .fallback(dashboard_fallback)
         .layer(CorsLayer::permissive());
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(%addr, "rspark dashboard listening on http://{addr}");
     axum::serve(listener, app).await
+}
+
+async fn serve_demo_page() -> Response {
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        crate::DEMO_PAGE,
+    )
+        .into_response()
 }
 
 async fn dashboard_fallback() -> Response {
@@ -37,6 +52,8 @@ async fn dashboard_fallback() -> Response {
         .into_response()
 }
 
+use axum::routing::get;
+
 #[cfg(test)]
 mod tests {
     use crate::render_dashboard;
@@ -47,5 +64,10 @@ mod tests {
         assert!(html.starts_with("<!doctype html>"));
         assert!(html.contains("rspark dashboard"));
         assert!(html.contains("/v1/cluster/snapshot"));
+    }
+
+    #[test]
+    fn demo_page_is_embedded() {
+        assert!(crate::DEMO_PAGE.contains("rspark demo shop"));
     }
 }

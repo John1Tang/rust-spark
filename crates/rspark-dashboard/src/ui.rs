@@ -561,6 +561,11 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
               <button id="run-sql">Run (Ctrl+Enter)</button>
               <button class="secondary" id="format-sql">format</button>
               <button class="secondary" id="clear-sql">clear</button>
+              <button class="secondary" id="open-collector" title="Open the click/collect demo page in a new tab. Clicks there are sent to rspark-ingest → Kafka → click_events, so a streaming-table join query will grow as you click.">open event collector ↗</button>
+              <label class="secondary" id="live-refresh-wrap" title="Re-run the current query every 1.5 s. Useful with the event collector to watch a streaming-⨯-batch join grow in real time." style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;">
+                <input type="checkbox" id="live-refresh" />
+                live refresh
+              </label>
               <span class="auto-refresh" id="run-status"></span>
               <span style="margin-left:auto;color:var(--muted);font-size:11px;">type to see suggestions · Tab/Enter accepts · Ctrl+Space forces</span>
             </div>
@@ -1313,6 +1318,44 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
       document.getElementById("format-sql").addEventListener("click", () => {
         const ta = document.getElementById("sql");
         ta.value = formatSql(ta.value);
+      });
+      document.getElementById("open-collector").addEventListener("click", () => {
+        // The demo page reads window.RSPARK_INGEST_URL but defaults to
+        // 127.0.0.1:8081 — that's where scripts/port-forward.sh forwards
+        // rspark-ingest. The page also lives at the dashboard's own
+        // origin, so it can fetch relative URLs without CORS issues.
+        window.open("/examples/e2e/demo_page.html", "_blank", "noopener");
+      });
+
+      // Live refresh: re-run the current query every 1.5 s while the
+      // checkbox is on. Pairs with the event collector to make a
+      // streaming-⨯-batch join visibly grow as new events arrive.
+      let liveTimer = null;
+      const liveBox = document.getElementById("live-refresh");
+      const liveStatus = document.getElementById("run-status");
+      function stopLive() {
+        if (liveTimer !== null) {
+          clearInterval(liveTimer);
+          liveTimer = null;
+        }
+        liveBox.checked = false;
+        liveStatus.textContent = "";
+      }
+      liveBox.addEventListener("change", () => {
+        if (liveBox.checked) {
+          runSql();
+          liveTimer = setInterval(runSql, 1500);
+          liveStatus.textContent = "live · every 1.5 s";
+        } else {
+          stopLive();
+        }
+      });
+      // Stop live refresh when the user manually edits the SQL — they'd
+      // expect their changes to land before the next auto-run.
+      document.getElementById("sql").addEventListener("input", () => {
+        if (liveTimer !== null) {
+          stopLive();
+        }
       });
       document.getElementById("add-table-btn").addEventListener("click", addTable);
       document.getElementById("refresh-tables").addEventListener("click", () => {

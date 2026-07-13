@@ -69,6 +69,7 @@ fn executor() -> LocalExecutor<'static> {
 fn select_star_returns_all_rows() {
     let batch = make_employees_batch();
     let scan = LogicalPlan::Scan {
+        table_name: "employees".into(),
         path: "mem".into(),
         source: "memory".into(),
         projection: None,
@@ -93,6 +94,7 @@ fn filter_predicate_via_planner_sql() {
     let plan = LogicalPlan::Project {
         input: Box::new(LogicalPlan::Filter {
             input: Box::new(LogicalPlan::Scan {
+                table_name: "employees".into(),
                 path: data_path("examples/data/employees.csv"),
                 source: "csv".into(),
                 projection: None,
@@ -130,6 +132,7 @@ fn aggregate_group_by_dept() {
     ]);
     let plan = LogicalPlan::Aggregate {
         input: Box::new(LogicalPlan::Scan {
+            table_name: "employees".into(),
             path: data_path("examples/data/employees.csv"),
             source: "csv".into(),
             projection: None,
@@ -173,6 +176,7 @@ fn join_emits_schema() {
     let plan_schema = build_join_schema(&left, &right, &[("id".into(), "id".into())]).unwrap();
     let plan = LogicalPlan::Join {
         left: Box::new(LogicalPlan::Scan {
+            table_name: "employees".into(),
             path: data_path("examples/data/employees.csv"),
             source: "csv".into(),
             projection: None,
@@ -180,6 +184,7 @@ fn join_emits_schema() {
             schema: left.clone(),
         }),
         right: Box::new(LogicalPlan::Scan {
+            table_name: "sales".into(),
             path: data_path("examples/data/sales.csv"),
             source: "csv".into(),
             projection: None,

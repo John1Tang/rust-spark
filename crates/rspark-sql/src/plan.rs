@@ -6,6 +6,11 @@ use std::sync::OnceLock;
 #[derive(Debug, Clone)]
 pub enum LogicalPlan {
     Scan {
+        /// Catalog table name as written in the query (e.g. `users`,
+        /// `click_events`). Used for lineage and to resolve the table
+        /// when the destination/path drifts (e.g. a live tail that
+        /// re-points the catalog at a different file).
+        table_name: String,
         path: String,
         source: String,
         projection: Option<Vec<Expr>>,
@@ -106,10 +111,48 @@ impl LogicalPlan {
             LogicalPlan::Scan { .. } | LogicalPlan::Empty => vec![],
         }
     }
+
+    /// Walk the plan tree and return the catalog tables referenced by
+    /// any `Scan`, in first-occurrence order with duplicates removed.
+    /// Used by `/v1/sql` to decide whether a query touches a streaming
+    /// table (which triggers pipeline auto-spawn) and by the DAG
+    /// endpoint to populate each flow's `reads` lineage field.
+    pub fn collect_table_refs(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        self.collect_table_refs_into(&mut out);
+        out
+    }
+
+    fn collect_table_refs_into(&self, out: &mut Vec<String>) {
+        match self {
+            LogicalPlan::Scan { table_name, .. } => {
+                if !out.iter().any(|t| t == table_name) {
+                    out.push(table_name.clone());
+                }
+            }
+            LogicalPlan::Project { input, .. }
+            | LogicalPlan::Filter { input, .. }
+            | LogicalPlan::Aggregate { input, .. }
+            | LogicalPlan::Sort { input, .. }
+            | LogicalPlan::Limit { input, .. }
+            | LogicalPlan::Distinct { input, .. } => input.collect_table_refs_into(out),
+            LogicalPlan::Join { left, right, .. } => {
+                left.collect_table_refs_into(out);
+                right.collect_table_refs_into(out);
+            }
+            LogicalPlan::Union { inputs, .. } => {
+                for i in inputs {
+                    i.collect_table_refs_into(out);
+                }
+            }
+            LogicalPlan::Empty => {}
+        }
+    }
 }
 
 pub fn build_scan_schema(name: &str, path: &str, source: &str, schema: Schema) -> LogicalPlan {
     LogicalPlan::Scan {
+        table_name: name.to_string(),
         path: path.to_string(),
         source: source.to_string(),
         projection: None,
@@ -218,4 +261,91 @@ static EMPTY_SCHEMA: OnceLock<Schema> = OnceLock::new();
 
 pub fn empty_schema() -> &'static Schema {
     EMPTY_SCHEMA.get_or_init(Schema::empty)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::plan::JoinType;
+    use rspark_core::expr::{BinaryOp, Expr};
+
+    fn scan(name: &str) -> LogicalPlan {
+        LogicalPlan::Scan {
+            table_name: name.into(),
+            path: format!("/tmp/{name}.csv"),
+            source: "csv".into(),
+            projection: None,
+            filter: None,
+            schema: Schema::empty(),
+        }
+    }
+
+    fn project(input: LogicalPlan) -> LogicalPlan {
+        LogicalPlan::Project {
+            input: Box::new(input),
+            expressions: vec![Expr::col("x")],
+            schema: Schema::empty(),
+        }
+    }
+
+    fn filter(input: LogicalPlan) -> LogicalPlan {
+        LogicalPlan::Filter {
+            input: Box::new(input),
+            predicate: Expr::binary(BinaryOp::Gt, Expr::col("x"), Expr::col("y")),
+            schema: Schema::empty(),
+        }
+    }
+
+    #[test]
+    fn collect_table_refs_scan_only() {
+        assert_eq!(scan("users").collect_table_refs(), vec!["users"]);
+    }
+
+    #[test]
+    fn collect_table_refs_walks_project_filter() {
+        let plan = project(filter(scan("events")));
+        assert_eq!(plan.collect_table_refs(), vec!["events"]);
+    }
+
+    #[test]
+    fn collect_table_refs_join_both_sides() {
+        let plan = LogicalPlan::Join {
+            left: Box::new(scan("click_events")),
+            right: Box::new(scan("users")),
+            on: vec![("user_id".into(), "id".into())],
+            how: JoinType::Inner,
+            schema: Schema::empty(),
+        };
+        assert_eq!(
+            plan.collect_table_refs(),
+            vec!["click_events", "users"]
+        );
+    }
+
+    #[test]
+    fn collect_table_refs_dedupes_in_order() {
+        // Same table referenced from a sub-plan should appear once.
+        let plan = LogicalPlan::Join {
+            left: Box::new(scan("users")),
+            right: Box::new(project(filter(scan("users")))),
+            on: vec![("id".into(), "id".into())],
+            how: JoinType::Inner,
+            schema: Schema::empty(),
+        };
+        assert_eq!(plan.collect_table_refs(), vec!["users"]);
+    }
+
+    #[test]
+    fn collect_table_refs_union() {
+        let plan = LogicalPlan::Union {
+            inputs: vec![scan("a"), scan("b"), scan("a")],
+            schema: Schema::empty(),
+        };
+        assert_eq!(plan.collect_table_refs(), vec!["a", "b"]);
+    }
+
+    #[test]
+    fn collect_table_refs_empty() {
+        assert!(LogicalPlan::Empty.collect_table_refs().is_empty());
+    }
 }

@@ -17,6 +17,19 @@ pub async fn write_destination(dest: &Destination, batch: &RecordBatch) -> Resul
     }
 }
 
+/// Append a batch to a destination without truncating prior content.
+/// Used by the `Refresh::Live` mode of the pipeline runner — each
+/// polled micro-batch becomes one or more rows on disk that downstream
+/// SQL can re-read.
+pub fn append_destination(dest: &Destination, batch: &RecordBatch) -> Result<u64> {
+    match dest {
+        Destination::File { path } => append_file(path, batch),
+        // S3 has no native append; full overwrite is the only option.
+        // Live mode is local-file only for now.
+        Destination::S3 { .. } => write_destination_blocking(dest, batch),
+    }
+}
+
 fn write_file(path: &PathBuf, batch: &RecordBatch) -> Result<u64> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
@@ -26,6 +39,60 @@ fn write_file(path: &PathBuf, batch: &RecordBatch) -> Result<u64> {
     let bytes = render_table(batch).into_bytes();
     std::fs::write(path, &bytes).map_err(Error::Io)?;
     Ok(bytes.len() as u64)
+}
+
+fn append_file(path: &PathBuf, batch: &RecordBatch) -> Result<u64> {
+    if batch.is_empty() {
+        return Ok(0);
+    }
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(Error::Io)?;
+        }
+    }
+    // Render each record as a single JSON line so downstream readers
+    // (JsonSource, NDJSON tailers) can read the destination losslessly.
+    let mut out = String::new();
+    let schema = batch.schema();
+    for record in batch.records() {
+        let mut obj = serde_json::Map::new();
+        for (field, value) in schema.fields().iter().zip(record.values().iter()) {
+            obj.insert(field.name.clone(), value_to_json(value));
+        }
+        out.push_str(&serde_json::to_string(&obj).map_err(|e| Error::Storage(e.to_string()))?);
+        out.push('\n');
+    }
+    use std::io::Write;
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(Error::Io)?;
+    f.write_all(out.as_bytes()).map_err(Error::Io)?;
+    Ok(out.len() as u64)
+}
+
+fn write_destination_blocking(dest: &Destination, batch: &RecordBatch) -> Result<u64> {
+    match dest {
+        Destination::File { path } => write_file(path, batch),
+        // S3 live-append isn't supported.
+        Destination::S3 { .. } => Err(Error::Storage(
+            "append_destination: S3 destinations don't support live append".into(),
+        )),
+    }
+}
+
+fn value_to_json(v: &rspark_core::Value) -> serde_json::Value {
+    use rspark_core::Value;
+    match v {
+        Value::Null => serde_json::Value::Null,
+        Value::Boolean(b) => serde_json::Value::Bool(*b),
+        Value::Int32(i) => serde_json::json!(i),
+        Value::Int64(i) => serde_json::json!(i),
+        Value::Float32(f) => serde_json::json!(f),
+        Value::Float64(f) => serde_json::json!(f),
+        Value::String(s) => serde_json::Value::String(s.clone()),
+    }
 }
 
 async fn write_s3(key: &str, bucket: Option<&str>, batch: &RecordBatch) -> Result<u64> {

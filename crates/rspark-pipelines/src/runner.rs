@@ -28,9 +28,13 @@ use serde::Serialize;
 use tracing::{info, warn};
 
 use crate::dag::PipelineDag;
-use crate::sink::{describe, write_destination};
+use crate::sink::{append_destination, describe, write_destination};
 use crate::source::{FileTailSource, KafkaSource, NullSource, StreamingSource};
 use crate::spec::{Flow, FlowKind, Pipeline, Refresh, SourceSpec};
+
+/// Per-batch progress callback for live flows. `rows` is the number of
+/// rows appended in the just-finished batch (0 for an empty poll).
+pub type ProgressFn = Arc<dyn Fn(usize) + Send + Sync>;
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct RunStats {
@@ -54,6 +58,7 @@ pub struct PipelineRunReport {
 pub struct PipelineRunner {
     pub context: ExecutionContext,
     pub catalog: Arc<dyn Catalog>,
+    progress: Option<ProgressFn>,
 }
 
 impl PipelineRunner {
@@ -61,7 +66,15 @@ impl PipelineRunner {
         Self {
             context: ExecutionContext::new(registry),
             catalog,
+            progress: None,
         }
+    }
+
+    /// Set a per-batch progress callback. Used by the API to surface
+    /// live-run status (`/v1/pipelines/:name/status`).
+    pub fn with_progress(mut self, progress: ProgressFn) -> Self {
+        self.progress = Some(progress);
+        self
     }
 
     /// Run a pipeline to completion. Returns a [`PipelineRunReport`]
@@ -110,6 +123,12 @@ impl PipelineRunner {
     }
 
     async fn run_one(&self, pipeline: &Pipeline, flow: &Flow) -> Result<RunStats> {
+        // Live mode is a long-running tail loop. It never returns a
+        // single RunStats until the process is killed; the HTTP
+        // handler spawns it via tokio::spawn and returns 202.
+        if matches!(flow.refresh, Refresh::Live { .. }) {
+            return self.run_live_streaming(pipeline, flow).await;
+        }
         let start = Instant::now();
         let mut source = build_source(&flow.source)?;
         let input = source.poll_batch().await?;
@@ -137,6 +156,65 @@ impl PipelineRunner {
             refresh: flow.refresh,
             duration_ms: start.elapsed().as_millis(),
             row_count: output.len(),
+            destination: describe(&flow.destination),
+        })
+    }
+
+    /// Long-running tail: poll the source forever, append each batch to
+    /// the destination. The first non-empty batch registers the flow's
+    /// output in the catalog so the SQL planner can resolve the table
+    /// name even when the destination file is empty.
+    async fn run_live_streaming(&self, pipeline: &Pipeline, flow: &Flow) -> Result<RunStats> {
+        let poll_ms = match flow.refresh {
+            Refresh::Live { poll_ms } => poll_ms.max(50),
+            _ => 500,
+        };
+        let _start = Instant::now();
+        let mut source = build_source(&flow.source)?;
+        let mut registered = false;
+        let mut total_rows: usize = 0;
+        info!(
+            flow = %flow.name,
+            poll_ms,
+            destination = %describe(&flow.destination),
+            "live tail started"
+        );
+        loop {
+            let batch = source.poll_batch().await?;
+            if !batch.is_empty() {
+                let output = self.execute_flow(pipeline, flow, batch).await?;
+                let appended = append_destination(&flow.destination, &output)?;
+                total_rows += output.len();
+                if !registered {
+                    if let Err(e) = self.register_flow_output(flow, &output) {
+                        warn!(flow = %flow.name, "register_flow_output failed: {e}");
+                    } else {
+                        registered = true;
+                    }
+                }
+                if appended > 0 {
+                    info!(
+                        flow = %flow.name,
+                        batch_rows = output.len(),
+                        total_rows,
+                        "live batch appended"
+                    );
+                    if let Some(p) = &self.progress {
+                        p(output.len());
+                    }
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(poll_ms)).await;
+        }
+        // unreachable while live, but the type system wants a stats
+        // value if we ever break out of the loop.
+        #[allow(unreachable_code)]
+        Ok(RunStats {
+            flow: flow.name.clone(),
+            kind: flow.kind,
+            refresh: flow.refresh,
+            duration_ms: _start.elapsed().as_millis(),
+            row_count: total_rows,
             destination: describe(&flow.destination),
         })
     }
@@ -176,6 +254,19 @@ impl PipelineRunner {
         flow: &Flow,
         input: RecordBatch,
     ) -> Result<RecordBatch> {
+        // Live-mode flows bypass the planner entirely: the polled
+        // batch is the output. The destination schema is the polled
+        // batch's schema (Kafka serializes page events as JSON
+        // objects, so the column types match what JsonSource reads
+        // back). The `query` field in the spec is preserved for
+        // documentation; transformations belong upstream of the
+        // pipeline. The early-return MUST happen before plan_sql —
+        // flow.query defaults to "" for live flows and the parser
+        // rejects empty input.
+        if matches!(flow.refresh, Refresh::Live { .. }) {
+            let _ = pipeline;
+            return Ok(input);
+        }
         let planner = Planner::new();
         let plan = planner.plan_sql(&flow.query, self.catalog.as_ref())?;
         let exec = rspark_exec::LocalExecutor::new(&self.context);
