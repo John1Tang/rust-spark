@@ -1,4 +1,4 @@
-FROM rust:1.94-slim AS builder
+FROM rust:1.97-slim AS builder
 WORKDIR /app
 
 # Force apt + cargo to ignore any inherited proxy env. Some corporate
